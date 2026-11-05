@@ -9,8 +9,15 @@
  * the data: without full text there is no reader, a filter with fewer than
  * two values is not drawn.
  *
- * State (search, filters, selected card, open document, page, cited
- * passage) lives in the URL hash, so a reload or a link restores the view.
+ * Two views: Wissen, the cards of rules, sources and documents, and the
+ * Arbeitsbereich (window.KB_DATA.work), the running state from ACTIVE-WORK.md
+ * and the client projects with their next steps, revenue figures and the
+ * rules they apply. Both builds carry it; its links lead into the dashboard
+ * (internal) or into the public vault repository (public).
+ *
+ * State (view, search, filters, selected card, open document, page, cited
+ * passage, project) lives in the URL hash, so a reload or a link restores the
+ * view.
  * Selecting a card or opening a document pushes a history entry that keeps
  * the scroll position; typing and filtering replace the entry.
  *
@@ -147,6 +154,25 @@
     }
   }
   const rulesOf = (id) => basis.get(id) || [];
+
+  // The Arbeitsbereich and the projects that apply each rule.
+  const WORK = DATA.work || null;
+  const projects = WORK ? WORK.projects : [];
+  const usedIn = new Map();
+  for (const p of projects) {
+    for (const r of p.rules) {
+      if (!usedIn.has(r.id)) usedIn.set(r.id, []);
+      usedIn.get(r.id).push({ project: p, why: r.why, scope: r.scope });
+    }
+  }
+  // A project's rules either bind DHCraft in it or carry over into the rule
+  // proposal for the client; both lists show them apart.
+  const RULE_SCOPES = [
+    { scope: "dhcraft", group: "Gilt für DHCraft in diesem Projekt", uses: "Greift in", count: "greift in",
+      fine: "Regeln der Leitlinien, die DHCraft in diesem Projekt binden." },
+    { scope: "client", group: "Übertragbar in den Regelvorschlag für den Auftraggeber", uses: "Übertragbar in den Regelvorschlag für", count: "übertragbar in",
+      fine: "Regeln der Leitlinien, die sich in einen Regelvorschlag für den Auftraggeber übertragen lassen." },
+  ];
   const readable = (doc) => Boolean(doc && doc.kind !== "rule" && (doc.pages.length || doc.body));
   const HAS_READER = docs.some(readable);
 
@@ -270,15 +296,17 @@
       const raw = p.get(facet.short) || p.get(facet.key);
       s[facet.key] = raw ? raw.split("|") : [];
     }
-    for (const key of ["sel", "doc", "page", "at"]) s[key] = p.get(key) || "";
+    for (const key of ["sel", "doc", "page", "at", "pr"]) s[key] = p.get(key) || "";
+    s.v = WORK && p.get("v") === "arbeit" ? "arbeit" : "";
     return s;
   }
 
   function hashFor(s) {
     const p = new URLSearchParams();
+    if (s.v) p.set("v", s.v);
     if (s.q) p.set("q", s.q);
     for (const facet of FACETS) if (s[facet.key].length) p.set(facet.short, s[facet.key].join("|"));
-    for (const key of ["sel", "doc", "page", "at"]) if (s[key]) p.set(key, s[key]);
+    for (const key of ["sel", "doc", "page", "at", "pr"]) if (s[key]) p.set(key, s[key]);
     return "#" + p.toString();
   }
 
@@ -304,15 +332,20 @@
     render(prev);
   }
 
-  // A link inside the page changes only what it opens; search and filters stay.
+  // A link inside the page changes only what it opens and the view it opens
+  // in; search and filters stay.
   function follow(href) {
     const t = parseHash(href);
     const mark = t.sel && !state.sel && !t.doc ? { panel: true } : {};
-    go({ sel: t.sel, doc: t.doc, page: t.page, at: t.at }, { push: true, mark });
+    go({ v: t.v, pr: t.pr, sel: t.sel, doc: t.doc, page: t.page, at: t.at }, { push: true, mark });
   }
 
-  const hrefSel = (id) => hashFor({ ...state, sel: id, doc: "", page: "", at: "" });
-  const hrefDoc = (id, page = "", at = "") => hashFor({ ...state, doc: id, page: String(page), at });
+  // Rules and documents open in the Wissen view, projects in the Arbeitsbereich.
+  const CLEAR = { v: "", pr: "", sel: "", doc: "", page: "", at: "" };
+  const hrefSel = (id) => hashFor({ ...state, ...CLEAR, sel: id });
+  const hrefDoc = (id, page = "", at = "") => hashFor({ ...state, ...CLEAR, doc: id, page: String(page), at });
+  const hrefView = (v) => hashFor({ ...state, ...CLEAR, v });
+  const hrefProject = (id) => hashFor({ ...state, ...CLEAR, v: "arbeit", pr: id });
 
   function closePanel() {
     if (history.state && history.state.panel) history.back();
@@ -395,6 +428,10 @@
     }
     for (const node of document.querySelectorAll("[data-scope]")) node.hidden = node.dataset.scope !== DATA.scope;
     for (const node of document.querySelectorAll(".stand")) node.textContent = DATA.generated || "";
+    if (WORK) {
+      $("views").hidden = false;
+      for (const node of document.querySelectorAll("[data-work]")) node.hidden = false;
+    }
     const links = DATA.links || [];
     if (links.length) {
       $("links").append(...links.map((l) => el("a", { href: l.href }, l.label)));
@@ -518,6 +555,10 @@
       box.append(el("p", { class: "text" }, link));
       meta.append(el("span", { class: "strong" }, item.status));
       if (item.goal) meta.append(el("span", {}, item.goal));
+      for (const { scope, count } of RULE_SCOPES) {
+        const uses = (usedIn.get(item.id) || []).filter((u) => u.scope === scope).length;
+        if (uses) meta.append(el("span", {}, `${count} ${uses} ${uses === 1 ? "Projekt" : "Projekten"}`));
+      }
       // A hit only on a cited page shows nowhere on the card; say where it is.
       if (list.length && !list.some((n) => item.f.title.includes(n) || item.f.meta.includes(n))) {
         meta.append(el("span", {}, "Treffer in einer zitierten Quelle"));
@@ -673,6 +714,27 @@
     return div;
   }
 
+  // Pre-rendered HTML from the build (raw HTML escaped there), links made
+  // internal like those of the reader.
+  function fromHtml(tag, attrs, htmlText) {
+    const node = el(tag, attrs);
+    node.innerHTML = htmlText;
+    linkInternal(node);
+    return node;
+  }
+
+  /** The projects that apply a rule, by group, each a way back into the Arbeitsbereich. */
+  function usesSection(rule) {
+    return RULE_SCOPES.flatMap(({ scope, uses: title }) => {
+      const uses = (usedIn.get(rule.id) || []).filter((u) => u.scope === scope);
+      if (!uses.length) return [];
+      return [el("h3", {}, title),
+        el("ul", { class: "items" }, ...uses.map((u) => el("li", {},
+          el("a", { href: hrefProject(u.project.id), "data-project": u.project.id }, u.project.title),
+          fromHtml("span", { class: "meta" }, u.why))))];
+    });
+  }
+
   function panelFor(item) {
     const close = el("button", { type: "button", class: "close" }, "Schließen");
     close.addEventListener("click", closePanel);
@@ -693,6 +755,7 @@
         facts([["Status", item.status, STATUS[item.status]], ["Ziel", item.goal, GOALS[item.goal]]]),
         inDoc,
         el("h3", {}, "Grundlagen"), basisList,
+        ...usesSection(item),
         HAS_READER ? null : el("p", { class: "fine" }, "Seitenangaben beziehen sich auf das PDF der Quelle beim Herausgeber.")];
     }
     const based = rulesOf(item.id);
@@ -900,6 +963,180 @@
     pageFrame = requestAnimationFrame(updatePage);
   }
 
+  // ---- Arbeitsbereich -------------------------------------------------------------
+
+  const number = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 0 });
+  const longDate = new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "long", year: "numeric" });
+  const isoDay = (iso) => longDate.format(new Date(`${iso}T00:00:00`)); // local time, not UTC
+
+  const htmlList = (list, cls) => el("ul", { class: cls }, ...list.map((h) => fromHtml("li", {}, h)));
+
+  function block(id, title, ...content) {
+    return el("section", { class: "work-block", "aria-labelledby": id }, el("h2", { id }, ...title), ...content);
+  }
+
+  function part(title, content) {
+    return content ? el("section", { class: "part" }, el("h4", {}, title), content) : null;
+  }
+
+  // Bars of one series in one hue, the value as text beside each bar; the
+  // longest bar is the largest value of the list.
+  function bars(title, rows) {
+    const max = Math.max(...rows.map((r) => r[1]), 1);
+    return el("div", { class: "bar-list" }, el("h5", {}, title),
+      el("ol", { class: "bars" }, ...rows.map(([name, value]) => {
+        const bar = el("span", { class: "bar" });
+        bar.style.inlineSize = `${(value / max) * 100}%`; // data-driven width
+        return el("li", {}, el("span", { class: "name" }, name), el("span", { class: "track" }, bar),
+          el("span", { class: "val" }, number.format(value)));
+      })));
+  }
+
+  function dataPanel(d) {
+    const figure = (label, value, cls) => el("div", { class: cls }, el("dt", {}, label), el("dd", {}, value));
+    return el("section", { class: "part data-panel" },
+      el("h4", {}, "Umsatzdaten"),
+      el("dl", { class: "figures" },
+        figure("Umsatz gesamt", number.format(d.total), "big"),
+        figure("Bestellungen", `${number.format(d.orders)}, davon ${number.format(d.unshipped)} nicht versandt`),
+        figure("Zeitraum", `${isoDay(d.first)} bis ${isoDay(d.last)}`)),
+      bars("Lieferländer mit dem meisten Umsatz", d.countries),
+      bars("Produkte mit dem meisten Umsatz", d.products),
+      el("p", { class: "fine" }, "Nur Summen aus Bestellungen und Produkten, ohne Kunden- oder Personaldaten. Der Datensatz nennt keine Währung."),
+      el("p", { class: "actions" }, el("a", { href: d.page }, "Ganze Umsatzseite öffnen")));
+  }
+
+  function ruleCard(applied) {
+    const rule = byId.get(applied.id);
+    if (!rule) return null;
+    return el("article", { class: "card card-rule clamped" },
+      el("p", { class: "text" }, el("a", { class: "card-link", href: hrefSel(rule.id), "data-rule": rule.id }, rule.text)),
+      el("p", { class: "meta" }, el("span", { class: "strong" }, rule.status), rule.goal ? el("span", {}, rule.goal) : null),
+      fromHtml("p", { class: "why" }, applied.why));
+  }
+
+  function projectCard(p) {
+    const titleId = `pr-title-${p.id}`;
+    const facts = el("dl", { class: "facts" });
+    for (const [term, value] of [["Stand", p.state], ["Nächster Schritt", p.next]]) {
+      if (value) facts.append(el("dt", {}, term), fromHtml("dd", {}, value));
+    }
+    const deliverables = p.deliverables.length
+      ? el("ul", { class: "deliv" }, ...p.deliverables.map((d) => el("li", {},
+        fromHtml("p", { class: "name" }, d.name),
+        d.state ? fromHtml("p", { class: "state" }, d.state) : null,
+        d.refs ? fromHtml("p", { class: "refs" }, d.refs) : null)))
+      : null;
+    const list = (items) => (items.length ? htmlList(items, "work-list") : null);
+    return el("article", { class: "project", id: `pr-${p.id}`, "aria-labelledby": titleId },
+      el("p", { class: "kind" }, ["Kundenprojekt", p.status].filter(Boolean).join(", ")),
+      fromHtml("h3", { id: titleId, tabindex: "-1" }, p.link),
+      facts.children.length ? facts : null,
+      el("div", { class: "project-cols" },
+        ...[part("Leistungen und Stand", deliverables),
+          p.data ? dataPanel(p.data) : null,
+          part("Offene Fragen an den Auftraggeber", list(p.questions)),
+          part("Offen beim Inhaber", list(p.owner)),
+          part("Entscheidungen", list(p.decisions))].filter(Boolean)),
+      p.rules.length
+        ? el("section", { class: "project-rules" },
+          el("h4", {}, "Geltende Regeln", el("span", { class: "n" }, String(p.rules.length))),
+          el("p", { class: "fine" }, "Eine Karte öffnet die Regel in der Wissensansicht."),
+          ...RULE_SCOPES.map(({ scope, group, fine }) => {
+            const own = p.rules.filter((r) => r.scope === scope);
+            return own.length
+              ? el("div", { class: "rule-group" },
+                el("h5", {}, group, el("span", { class: "n" }, String(own.length))),
+                el("p", { class: "fine" }, fine),
+                el("div", { class: "grid" }, ...own.map(ruleCard).filter(Boolean)))
+              : null;
+          }).filter(Boolean))
+        : null);
+  }
+
+  function buildWork() {
+    const steps = WORK.todos.reduce((n, g) => n + g.items.length, 0);
+    const todos = block("h-todos", ["Nächste Schritte", el("span", { class: "n" }, String(steps))],
+      ...WORK.todos.filter((g) => g.items.length).map((g) => el("div", { class: "todo-group" },
+        el("h3", {}, g.project ? el("a", { href: hrefProject(g.project), "data-project": g.project }, g.from) : g.from),
+        el("p", { class: "origin" }, g.project ? "aus dem " : "aus ", fromHtml("span", {}, g.where)),
+        htmlList(g.items, "work-list todo"))));
+    const side = el("div", { class: "work-side" },
+      WORK.running.length ? block("h-running", ["Was läuft"], htmlList(WORK.running, "work-list")) : null,
+      WORK.questions.length ? block("h-questions", ["Offene Fragen"], htmlList(WORK.questions, "work-list")) : null);
+    const projectList = projects.length
+      ? el("section", { class: "work-projects", "aria-labelledby": "h-projects" },
+        el("h2", { id: "h-projects" }, "Projekte", el("span", { class: "n" }, String(projects.length))),
+        ...projects.map(projectCard))
+      : null;
+    $("work").replaceChildren(
+      // The file is named as text here; each to-do group links its origin.
+      el("p", { class: "work-lead" }, "Laufende Arbeit, nächste Schritte und Kundenprojekte, zusammengestellt aus ",
+        "ACTIVE-WORK.md und den Projektdokumenten. Die Ansicht zeigt nur an, geändert wird in den Dokumenten selbst."),
+      el("div", { class: "work-top" }, todos, side),
+      projectList);
+  }
+
+  let workBuilt = false;
+  function renderWork(prev, restore) {
+    if (!workBuilt) {
+      buildWork();
+      workBuilt = true;
+    }
+    for (const old of $("work").querySelectorAll(".project.target")) old.classList.remove("target");
+    const target = state.pr ? document.getElementById(`pr-${state.pr}`) : null;
+    if (target) target.classList.add("target");
+    if (restore) return;
+    // Entering the view or another project: the project, else the top.
+    if (!prev || prev.v !== state.v || prev.pr !== state.pr) {
+      if (target) target.scrollIntoView({ block: "start" });
+      else window.scrollTo(0, 0);
+    }
+  }
+
+  // Focus after a change of the Arbeitsbereich: on Back the link that had
+  // left it, on a project its title, else the main region, unless the view
+  // switch itself was used and keeps the focus.
+  function workFocus(prev, restore) {
+    const quiet = { preventScroll: true };
+    const work = $("work");
+    if (restore && prev.v !== "arbeit") {
+      const back = (prev.sel && work.querySelector(`a[data-rule="${CSS.escape(prev.sel)}"]`)) ||
+        (prev.doc && work.querySelector(`a[data-open="${CSS.escape(prev.doc)}"]`));
+      if (back) {
+        back.focus(quiet);
+        return;
+      }
+    }
+    if (state.pr && (prev.pr !== state.pr || prev.v !== state.v)) {
+      // Coming from a rule's panel, the reader lands on that rule in the project.
+      const card = prev.sel && document.querySelector(`#pr-${CSS.escape(state.pr)} a[data-rule="${CSS.escape(prev.sel)}"]`);
+      if (card) {
+        // Scrolling the link itself would scroll the clamped text inside the card.
+        card.closest(".card").scrollIntoView({ block: "center" });
+        card.focus(quiet);
+        return;
+      }
+      const title = document.getElementById(`pr-title-${state.pr}`);
+      if (title) {
+        title.focus(quiet);
+        return;
+      }
+    }
+    const inSwitch = document.activeElement && document.activeElement.closest("#views");
+    if (prev.v !== state.v && !inSwitch) $("main").focus(quiet);
+  }
+
+  function syncViews() {
+    if (!WORK) return;
+    for (const [v, id] of [["", "view-wissen"], ["arbeit", "view-arbeit"]]) {
+      const a = $(id);
+      a.href = hrefView(v);
+      if (state.v === v) a.setAttribute("aria-current", "page");
+      else a.removeAttribute("aria-current");
+    }
+  }
+
   // ---- Render --------------------------------------------------------------------
 
   function cardLink(id) {
@@ -907,6 +1144,22 @@
   }
 
   function render(prev = null, restore = null) {
+    syncViews();
+    const working = state.v === "arbeit";
+    document.body.classList.toggle("working", working);
+    $("work").hidden = !working;
+    if (working) {
+      document.body.classList.remove("reading");
+      $("board").hidden = true;
+      $("reader").hidden = true;
+      readerKey = "";
+      navKey = "";
+      renderPanel(null, null);
+      renderWork(prev, restore);
+      if (restore) window.scrollTo(0, restore.y);
+      if (prev) workFocus(prev, restore);
+      return;
+    }
     const query = parseQuery(state.q);
     const scores = new Map(items.map((i) => [i, score(i, query)]));
     syncControls(items.filter((i) => scores.get(i) > 0));
@@ -942,6 +1195,8 @@
     if (restore) {
       window.scrollTo(0, restore.y);
       $("panel").scrollTop = restore.panel || 0;
+    } else if (prev && prev.v && !doc) {
+      window.scrollTo(0, 0); // from the Arbeitsbereich to the top of the cards
     }
     if (prev) moveFocus(prev, doc, item, restore);
   }
@@ -977,6 +1232,8 @@
       $("panel-title").focus(quiet);
     } else if (!doc && !item && prev.sel && !state.sel) {
       (cardLink(prev.sel) || $("main")).focus(quiet);
+    } else if (prev.v && !state.v && !(document.activeElement && document.activeElement.closest("#views"))) {
+      $("main").focus(quiet); // the focused element lay in the Arbeitsbereich
     }
   }
 

@@ -25,6 +25,9 @@
     --target: oklch(95.5% 0.03 255);
     --mark: oklch(93% 0.07 95);
     --mark-current: oklch(86% 0.12 85);
+    /* One data hue for bars, the step of the Northwind page; it passes the
+       palette validator of the dataviz skill against the white surface. */
+    --data: #5B8BCB;
 
     --font: "Instrument Sans", system-ui, sans-serif;
     --display: "Sora", "Instrument Sans", system-ui, sans-serif;
@@ -113,6 +116,10 @@
   .foot { padding: var(--space-3) var(--space-4) var(--space-4); color: var(--ink-faint); font-size: var(--tiny); }
   .foot p { max-inline-size: var(--measure); }
 
+  /* The Arbeitsbereich has no search or filters and uses the whole width. */
+  .working .workspace { grid-template-columns: minmax(0, 1fr); }
+  .working :is(.controls, .panel) { display: none; }
+
   /* While a text is open, the filters have nothing to act on. */
   .reading :is(.filters, .about) { display: none; }
 
@@ -149,6 +156,18 @@
   .top .title h1 { font-size: 1.25rem; }
   .top .title p { color: var(--ink-soft); font-size: 0.9375rem; margin-block-start: var(--space-1); max-inline-size: var(--measure); }
   .links { display: flex; flex-wrap: wrap; gap: var(--space-3); font-size: var(--small); }
+  /* View switch: a row of its own under the title, the current view underlined. */
+  .views { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 0 var(--space-2); box-shadow: inset 0 -1px 0 var(--edge); }
+  .views a {
+    padding: var(--space-2) var(--space-3);
+    border-block-end: 2px solid transparent;
+    color: var(--ink-soft);
+    font-weight: 600;
+    font-size: 0.9375rem;
+    text-decoration: none;
+  }
+  .views a:hover { color: var(--ink); border-block-end-color: var(--edge-hi); }
+  .views a[aria-current="page"] { color: var(--accent-hi); border-block-end-color: var(--accent); }
 
   /* Controls */
   .search label, .filter p { display: block; font-size: var(--small); font-weight: 600; margin-block-end: var(--space-1); }
@@ -237,6 +256,84 @@
   }
   .snippet:hover { color: var(--ink); text-decoration: underline; text-decoration-color: var(--edge-hi); }
   .snippet .where { color: var(--accent-hi); font-weight: 600; margin-inline-end: var(--space-2); }
+
+  /* Arbeitsbereich */
+  .work { max-inline-size: 110rem; }
+  .work-lead { color: var(--ink-soft); font-size: 0.9375rem; max-inline-size: var(--measure); margin-block-end: var(--space-4); }
+  .work-top { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--space-3); align-items: start; }
+  .work-side { display: grid; gap: var(--space-3); }
+  .work-block, .project {
+    background: var(--surface);
+    border: 1px solid var(--edge);
+    border-radius: var(--radius);
+    padding: var(--space-3) var(--space-4) var(--space-4);
+    overflow-wrap: anywhere;
+  }
+  .work h2 { font-size: 1.0625rem; margin-block-end: var(--space-2); }
+  .work h2 .n, .work h4 .n, .work h5 .n { font-family: var(--font); font-size: var(--small); font-weight: 400; color: var(--ink-faint); margin-inline-start: 0.6em; }
+  .work-list { list-style: none; padding: 0; font-size: 0.9375rem; line-height: 1.5; }
+  .work-list > li { padding-block: var(--space-2); }
+  .work-list > li + li { border-block-start: 1px solid var(--edge); }
+  .work-list code, .project code { font-size: 0.875em; overflow-wrap: anywhere; }
+  .todo-group + .todo-group { margin-block-start: var(--space-4); }
+  .todo-group h3 { font-size: 0.9375rem; }
+  .todo-group h3 a { color: var(--ink); }
+  .origin { font-size: var(--tiny); color: var(--ink-faint); margin-block: 0.125rem var(--space-1); }
+  .origin a { color: var(--ink-faint); }
+  .work-projects { margin-block-start: var(--space-5); }
+  .project { scroll-margin-block-start: var(--space-3); }
+  .project.target { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+  .project + .project { margin-block-start: var(--space-3); }
+  .project > .kind { font-size: var(--small); color: var(--ink-faint); }
+  .project > h3 { font-size: 1.1875rem; margin-block: var(--space-1) var(--space-3); }
+  .project > h3 a { color: var(--ink); }
+  .project > .facts { font-size: 0.9375rem; max-inline-size: 60rem; }
+  /* Parts flow in columns of readable width, each kept whole. */
+  .project-cols { columns: 22rem 3; column-gap: var(--space-5); margin-block-start: var(--space-3); }
+  .part { break-inside: avoid; padding-block: var(--space-3) var(--space-2); }
+  .project h4 { font-family: var(--display); font-size: 0.9375rem; font-weight: 600; margin-block-end: var(--space-1); }
+  .deliv { list-style: none; padding: 0; font-size: 0.875rem; }
+  .deliv > li { padding-block: var(--space-2); }
+  .deliv > li + li { border-block-start: 1px solid var(--edge); }
+  .deliv .name { font-weight: 600; }
+  .deliv .state { color: var(--ink-soft); line-height: 1.45; }
+  .deliv .refs { margin-block-start: 0.125rem; font-size: var(--tiny); color: var(--ink-faint); }
+  .deliv .refs a { color: var(--ink-faint); }
+  .project .work-list { font-size: 0.875rem; }
+
+  .figures { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); margin-block: var(--space-1) var(--space-3); }
+  .figures dt { font-size: var(--tiny); color: var(--ink-faint); }
+  .figures dd { font-size: 0.875rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .figures .big { flex-basis: 100%; }
+  .figures .big dd { font-family: var(--display); font-size: 1.5rem; }
+  .bar-list + .bar-list { margin-block-start: var(--space-3); }
+  .bar-list h5 { font-size: var(--small); font-weight: 600; color: var(--ink-soft); margin: 0 0 var(--space-1); }
+  /* All rows share one column grid, so every track has the same width and the
+     bar lengths compare across the list. */
+  .bars { list-style: none; padding: 0; display: grid; grid-template-columns: minmax(0, 10rem) minmax(2rem, 1fr) max-content; gap: 0.125rem var(--space-2); font-size: var(--small); }
+  .bars li { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; }
+  .bars .track { display: block; }
+  .bars .bar { display: block; block-size: 6px; min-inline-size: 2px; background: var(--data); border-radius: 0 3px 3px 0; }
+  .bars .val { color: var(--ink-soft); font-variant-numeric: tabular-nums; text-align: end; }
+  .data-panel .actions { margin-block-start: var(--space-2); }
+
+  .project-rules { margin-block-start: var(--space-3); padding-block-start: var(--space-3); border-block-start: 1px solid var(--edge); }
+  .project-rules .fine { margin-block: 0 var(--space-2); }
+  .rule-group { margin-block-start: var(--space-3); }
+  .rule-group h5 { font-family: var(--display); font-size: 0.875rem; font-weight: 600; margin: 0 0 0.125rem; }
+  .project .card { background: var(--ground); }
+  .project .card .why { font-size: var(--small); color: var(--ink-soft); line-height: 1.45; }
+  .project .card.clamped .text { -webkit-line-clamp: 3; }
+
+  @media (max-width: 60rem) {
+    .work-top { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 48rem) {
+    .work-block, .project { padding-inline: var(--space-3); }
+    .project > .facts { grid-template-columns: minmax(0, 1fr); gap: 0; }
+    .project > .facts dd + dt { margin-block-start: var(--space-2); }
+    .bars { grid-template-columns: minmax(0, 7.5rem) minmax(1.5rem, 1fr) max-content; }
+  }
 
   /* Panel */
   .panel-head { display: flex; gap: var(--space-3); align-items: baseline; justify-content: space-between; }
