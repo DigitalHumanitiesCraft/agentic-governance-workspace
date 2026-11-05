@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Northwind Traders, Umsatz 1996 bis 1998</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div>
+      <h1>Northwind Traders, Umsatz 1996 bis 1998</h1>
+      <p class="sub">Übungsdaten aus der Beispieldatenbank Northwind. Ausgewertet sind nur Bestellungen und Produkte, ohne Kunden- oder Personaldaten.</p>
+    </div>
+    <a class="back" href="../index.html">Zur Übersicht</a>
+  </header>
+
+  <main>
+    <section class="figures" aria-label="Kennzahlen">
+      <div class="tile"><p class="label" id="t-rev-label">Umsatz</p><p class="value" id="t-rev"></p></div>
+      <div class="tile"><p class="label">Anteil am Gesamtumsatz</p><p class="value" id="t-share"></p></div>
+      <div class="tile"><p class="label">Zeitraum der Bestellungen</p><p class="value small" id="t-span"></p></div>
+      <div class="tile"><p class="label">Bestellungen, davon nicht versandt</p><p class="value small" id="t-orders"></p></div>
+    </section>
+
+    <div class="filterbar" aria-live="polite">
+      <p id="filter-text" tabindex="-1">Klicke ein Land, eine Kategorie oder ein Produkt, um die anderen Diagramme danach zu filtern.</p>
+      <div id="chips"></div>
+    </div>
+
+    <section class="card wide" aria-labelledby="h-month">
+      <h2 id="h-month">Umsatz pro Monat</h2>
+      <p class="note">Juli 1996 beginnt am 4. Juli, Mai 1998 endet am 6. Mai. Der letzte Monat ist deshalb gestrichelt und nicht mit den anderen vergleichbar.</p>
+      <div class="line" id="line"></div>
+    </section>
+
+    <div class="grid">
+      <section class="card" aria-labelledby="h-country">
+        <h2 id="h-country">Lieferländer</h2>
+        <div class="bars" id="countries"></div>
+      </section>
+      <section class="card" aria-labelledby="h-cat">
+        <h2 id="h-cat">Kategorien</h2>
+        <div class="bars" id="categories"></div>
+      </section>
+      <section class="card" aria-labelledby="h-prod">
+        <h2 id="h-prod">Produkte</h2>
+        <div class="bars" id="products"></div>
+        <button type="button" class="more" id="more"></button>
+      </section>
+    </div>
+
+    <details class="method">
+      <summary>Wie gerechnet wurde</summary>
+      <p>Umsatz einer Bestellposition ist Preis mal Menge mal eins minus Rabatt. Das Land ist das Lieferland der Bestellung. Noch nicht versandte Bestellungen zählen mit, weil sie gebuchte Verkäufe sind. Der Datensatz nennt keine Währung. Die Seite enthält nur Summen nach Monat, Lieferland und Produkt, die das Skript <code>scripts/northwind_umsatz.py --web</code> lokal berechnet. Die Kundenliste und die Liste der Mitarbeitenden wurden nicht gelesen.</p>
+    </details>
+  </main>
+
+  <div class="tooltip" id="tip" role="status" hidden></div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

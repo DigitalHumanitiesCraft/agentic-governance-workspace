@@ -1,0 +1,106 @@
+@layer reset, base, tokens, layout, components;
+
+@layer tokens {
+  :root {
+    color-scheme: light;
+    --bg: oklch(98.6% 0.004 250);
+    --surface: oklch(100% 0 0);
+    --text: oklch(24% 0.01 250);
+    --muted: oklch(47% 0.01 250);
+    --rule: oklch(91% 0.004 250);
+    --grid: oklch(93% 0.003 250);
+    --link: oklch(43% 0.11 255);
+    /* One data hue; selection uses a darker step of it. Both pass the
+       palette validator of the dataviz skill against the light surface. */
+    --mark: #5B8BCB;
+    --mark-strong: #2E5C9C;
+    --mark-wash: rgb(91 139 203 / 0.12);
+    --mark-faint: #C9D8EC;
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 1rem;
+    --space-4: 1.5rem;
+  }
+}
+
+@layer reset {
+  *, *::before, *::after { box-sizing: border-box; }
+  body, h1, h2, p { margin: 0; }
+  button { font: inherit; color: inherit; }
+}
+
+@layer base {
+  body { background: var(--bg); color: var(--text); font-family: var(--font); line-height: 1.45; }
+  a { color: var(--link); }
+  :focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+  code { font-size: 0.9em; }
+}
+
+@layer layout {
+  .top {
+    display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4);
+    justify-content: space-between; align-items: end;
+    padding: var(--space-4); background: var(--surface); border-block-end: 1px solid var(--rule);
+  }
+  main { padding: var(--space-4); max-inline-size: 90rem; margin-inline: auto; display: grid; gap: var(--space-3); }
+  .figures { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr)); gap: var(--space-3); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: var(--space-3); align-items: start; }
+}
+
+@layer components {
+  h1 { font-size: 1.375rem; }
+  .sub { color: var(--muted); margin-block-start: var(--space-1); max-inline-size: 70ch; }
+  .back { font-size: 0.875rem; }
+
+  .tile, .card { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: var(--space-3); }
+  .tile .label { color: var(--muted); font-size: 0.8125rem; }
+  .tile .value { font-size: 1.5rem; font-weight: 600; font-variant-numeric: tabular-nums; margin-block-start: var(--space-1); }
+  .tile .value.small { font-size: 1.0625rem; }
+
+  .filterbar { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-3); align-items: center; font-size: 0.875rem; color: var(--muted); }
+  #chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+  .chip { border: 1px solid var(--mark-strong); background: var(--surface); color: var(--mark-strong); border-radius: 1rem; padding: 0.1rem 0.6rem; cursor: pointer; font-size: 0.8125rem; font-weight: 600; }
+  .chip.reset { border-color: var(--rule); color: var(--muted); font-weight: 400; }
+
+  .card h2 { font-size: 1rem; margin-block-end: var(--space-2); }
+  .note { color: var(--muted); font-size: 0.8125rem; margin-block-end: var(--space-2); }
+
+  /* Horizontal bars: label, bar, value at the tip. Each row is a button. */
+  .bars { display: grid; gap: 2px; }
+  .row {
+    display: grid; grid-template-columns: minmax(7rem, 11rem) minmax(0, 1fr);
+    align-items: center; gap: var(--space-2);
+    border: 0; background: none; padding: 3px var(--space-1); text-align: start; cursor: pointer; border-radius: 4px;
+    font-size: 0.8125rem;
+  }
+  .row:hover { background: var(--bg); }
+  .row .name { overflow-wrap: anywhere; }
+  .row .track { display: flex; align-items: center; gap: var(--space-2); min-inline-size: 0; }
+  .row .bar { block-size: 14px; background: var(--mark); border-radius: 0 4px 4px 0; flex: none; min-inline-size: 2px; }
+  .row .val { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .row[aria-pressed="true"] .bar { background: var(--mark-strong); }
+  .row[aria-pressed="true"] .name { font-weight: 600; }
+  .row.zero { color: var(--muted); }
+  .more { margin-block-start: var(--space-2); border: 0; background: none; color: var(--link); cursor: pointer; text-decoration: underline; font-size: 0.8125rem; padding: 0; }
+
+  .line svg { display: block; inline-size: 100%; block-size: auto; overflow: visible; }
+  .line .gridline { stroke: var(--grid); stroke-width: 1; }
+  .line .axis { fill: var(--muted); font-size: 11px; }
+  .line .area { fill: var(--mark-wash); }
+  .line .path { fill: none; stroke: var(--mark); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .line .path.partial { stroke-dasharray: 4 4; }
+  .line .dot { fill: var(--mark); stroke: var(--surface); stroke-width: 2; }
+  .line .dot.partial { fill: var(--mark-faint); }
+  .line .cross { stroke: var(--muted); stroke-width: 1; }
+  .line .hit { fill: transparent; }
+
+  .tooltip {
+    position: fixed; z-index: 10; pointer-events: none;
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 4px;
+    padding: var(--space-1) var(--space-2); font-size: 0.8125rem; box-shadow: 0 1px 3px rgb(0 0 0 / 0.08);
+  }
+  .method { font-size: 0.875rem; color: var(--muted); }
+  .method summary { cursor: pointer; color: var(--text); }
+  .method p { margin-block-start: var(--space-2); max-inline-size: 80ch; }
+}
