@@ -1,6 +1,6 @@
 # Agentic Engineering und Governance
 
-The published results of a workshop on rules for AI agents at Digital Humanities Craft, served through GitHub Pages at https://digitalhumanitiescraft.github.io/agentic-governance-workspace/. The start page links four parts:
+The published results of a workshop on rules for AI agents at Digital Humanities Craft, served through GitHub Pages at https://dhcraft.org/agentic-governance-workspace/. The start page links four parts:
 
 - `leitlinien/`, the card workspace described below,
 - the governance draft as Beschlussvorlage 1.0 (PDF) and the pitch deck for the owners (PPTX) in `material/`,
