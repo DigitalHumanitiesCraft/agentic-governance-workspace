@@ -52,12 +52,39 @@
 
   // ---- Search ------------------------------------------------------------------
 
-  // Lower case, without diacritics, hyphens as spaces; "massnahme" also
-  // finds "Maßnahme" and "pruefung" finds "Prüfung".
-  const fold = (text) => text.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[-‐‑]/g, " ");
-  function variants(term) {
-    return [...new Set([term, term.replace(/(^|[^q])([aou])e(?=[a-zß]{2})/g, "$1$2"), term.replace(/ss/g, "ß")])];
+  // Lower case, without diacritics, hyphens and dashes as spaces. The fold
+  // keeps the string length, so match positions point into the original
+  // text for highlighting; a character whose fold would change the length
+  // stays as it is.
+  const MARKS = /[̀-ͯ]/g;
+  const DASHES = /[-‐‑–]/g;
+  function fold(text) {
+    const quick = text.toLowerCase().normalize("NFD").replace(MARKS, "");
+    let out = quick;
+    if (quick.length !== text.length) {
+      out = "";
+      for (const ch of text) {
+        const f = ch.toLowerCase().normalize("NFD").replace(MARKS, "");
+        out += f.length === ch.length ? f : ch;
+      }
+    }
+    return out.replace(DASHES, " ");
   }
+
+  // Search forms of one query word: "massnahme" also finds "Maßnahme" and
+  // "pruefung" finds "Prüfung"; the reverse needs the unfolded word, because
+  // folding drops the umlaut, so "Prüfung" also finds "Pruefung" and
+  // "Maßnahme" finds "Massnahme". The umlaut form applies only inside a word,
+  // so English "true", "does" or "queue" stay as typed.
+  const SPELLED = { ä: "ae", ö: "oe", ü: "ue", ß: "ss" };
+  function forms(word) {
+    const term = fold(word);
+    const set = new Set([term, term.replace(/(^|[^q])([aou])e(?=[a-zß]{2})/g, "$1$2"), term.replace(/ss/g, "ß")]);
+    if (/[äöüß]/.test(word)) set.add(fold(word.replace(/[äöüß]/g, (c) => SPELLED[c])));
+    return [...set].filter(Boolean);
+  }
+  // Query words, unfolded, so forms() still sees umlauts.
+  const queryWords = () => state.q.toLowerCase().normalize("NFC").replace(DASHES, " ").split(/\s+/).filter(Boolean);
   const plain = (html) => html.replace(/<[^>]+>/g, " ");
 
   const sources = DATA.sources.map((s) => ({
@@ -103,8 +130,7 @@
   // ---- Filtering -------------------------------------------------------------
 
   function matchesQuery(item) {
-    const words = fold(state.q).split(/\s+/).filter(Boolean);
-    return words.every((w) => variants(w).some((v) => item.haystack.includes(v)));
+    return queryWords().every((w) => forms(w).some((v) => item.haystack.includes(v)));
   }
   const showKind = (kind) => !state.kind.length || state.kind.includes(kind);
   function ruleVisible(r) {
@@ -120,7 +146,7 @@
   // ---- Highlight -------------------------------------------------------------
 
   function highlight(node) {
-    const needles = fold(state.q).split(/\s+/).filter((w) => w.length > 2).flatMap(variants);
+    const needles = queryWords().filter((w) => fold(w).trim().length > 2).flatMap(forms);
     if (!needles.length) return node;
     const text = node.textContent;
     const folded = fold(text);
@@ -256,7 +282,12 @@
     $("sources-head").replaceChildren("Quellen", el("span", { class: "n" }, `${vs.length} von ${sources.length}`));
     const ruleGroups = grouped(vr, (r) => r.field, FIELDS, ruleCard);
     const sourceGroups = grouped(vs, (s) => s.category, CATEGORIES, sourceCard);
-    $("rules").replaceChildren(...(ruleGroups.length ? ruleGroups : [el("p", { class: "empty" }, "Keine Regel passt zu Suche und Filtern.")]));
+    // The rule texts are English while the interface is German, so an empty
+    // search result points to the language.
+    const noRule = state.q.trim()
+      ? "Keine Regel passt zu Suche und Filtern. Regeln und Quellen sind englisch formuliert, ein englischer Begriff findet mehr."
+      : "Keine Regel passt zu den Filtern.";
+    $("rules").replaceChildren(...(ruleGroups.length ? ruleGroups : [el("p", { class: "empty" }, noRule)]));
     $("sources").replaceChildren(...(sourceGroups.length ? sourceGroups : [el("p", { class: "empty" }, "Keine Quelle passt zu Suche und Filtern. Viele Quellen sind englisch, ein englischer Begriff findet dort mehr.")]));
     $("status").textContent = `${vr.length + vs.length} Karten`;
   }
@@ -355,8 +386,14 @@
   }
 
   document.addEventListener("click", (event) => {
-    // Only links that select a card are handled here; the skip link and
-    // other anchors keep their normal behaviour.
+    // The skip link moves focus only; as a hash it would replace the state.
+    const skip = event.target.closest("a.skip");
+    if (skip) {
+      event.preventDefault();
+      document.querySelector(skip.getAttribute("href")).focus();
+      return;
+    }
+    // Otherwise only links that select a card are handled here.
     const a = event.target.closest("a[href*='sel=']");
     if (!a || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     event.preventDefault();
