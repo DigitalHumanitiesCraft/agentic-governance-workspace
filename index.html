@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agentic Engineering und Governance, Arbeitsfläche</title>
+  <meta name="description" content="Regeln für AI Agents in einer kleinen Forschungs- und Softwarefirma, jede mit ihren Quellen. Eine Arbeitsfläche von Digital Humanities Craft.">
+  <link rel="icon" href="assets/dhcraft_logo_watercolor.png">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip" href="#board">Zu den Karten springen</a>
+
+  <header class="top">
+    <a class="brand" href="https://dhcraft.org" rel="noopener">
+      <img src="assets/dhcraft_logo_watercolor.png" alt="" width="28" height="32">
+      <span>Digital Humanities Craft</span>
+    </a>
+    <div class="title">
+      <h1>Agentic Engineering und Governance</h1>
+      <p>Welche Regeln braucht eine kleine Forschungs- und Softwarefirma, damit AI Agents regelkonform, sicher und nachprüfbar arbeiten? Jede Regel steht hier mit den Quellen, auf denen sie beruht.</p>
+    </div>
+  </header>
+
+  <div class="workspace" id="workspace">
+    <aside class="controls" aria-label="Suche und Filter">
+      <form class="search" role="search" id="search-form">
+        <label for="q">Suche in Regeln und Quellen</label>
+        <input type="search" id="q" autocomplete="off" spellcheck="false">
+      </form>
+
+      <details class="filters" id="filters" open>
+      <summary>Filter</summary>
+      <div class="filter" id="f-kind" role="group" aria-labelledby="l-kind">
+        <p id="l-kind">Zeigen</p>
+      </div>
+      <div class="filter" id="f-field" role="group" aria-labelledby="l-field">
+        <p id="l-field">Feld der Regel</p>
+      </div>
+      <div class="filter" id="f-status" role="group" aria-labelledby="l-status">
+        <p id="l-status">Status der Regel</p>
+      </div>
+      <div class="filter" id="f-goal" role="group" aria-labelledby="l-goal">
+        <p id="l-goal">Ziel der Regel</p>
+      </div>
+      <div class="filter" id="f-cat" role="group" aria-labelledby="l-cat">
+        <p id="l-cat">Art der Quelle</p>
+      </div>
+      <button type="button" class="reset" id="reset" hidden>Alle Filter zurücksetzen</button>
+      </details>
+
+      <details class="about">
+        <summary>Was ist diese Arbeitsfläche?</summary>
+        <p>Sie zeigt die Leitlinien, die Digital Humanities Craft für den Einsatz von AI Agents aus Quellen des Jahres 2026 abgeleitet hat, ergänzt um wenige ältere Rechtstexte und Leitlinien zum Datenschutzbeauftragten. Jede Regel nennt ihren Status, ihr Ziel und die Quellen mit Seite.</p>
+        <p>Die Quellen erscheinen mit einer eigenen Zusammenfassung und einem Link zum Original beim Herausgeber. Die Originale selbst liegen nicht auf dieser Seite.</p>
+        <p>Die Seite lädt keine externen Dienste nach, setzt keine Cookies und speichert nichts. Suche und Filter laufen in deinem Browser.</p>
+        <dl class="glossary" id="glossary"></dl>
+      </details>
+    </aside>
+
+    <main class="board" id="board" tabindex="-1">
+      <p class="status" id="status" aria-live="polite"></p>
+      <section class="group" id="rules-section" aria-labelledby="rules-head">
+        <h2 id="rules-head">Regeln</h2>
+        <div id="rules"></div>
+      </section>
+      <section class="group" id="sources-section" aria-labelledby="sources-head">
+        <h2 id="sources-head">Quellen</h2>
+        <div id="sources"></div>
+      </section>
+    </main>
+
+    <aside class="panel" id="panel" aria-labelledby="panel-title" hidden></aside>
+  </div>
+
+  <footer class="foot">
+    <p>Inhalte von Digital Humanities Craft unter <a href="https://creativecommons.org/licenses/by/4.0/deed.de" rel="noopener">CC BY 4.0</a>, Code unter MIT. Die Quellen gehören ihren Herausgebern. Hier stehen nur ihre Metadaten, eigene Zusammenfassungen und Links. Stand <span id="stand"></span>.</p>
+  </footer>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
