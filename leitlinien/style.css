@@ -11,7 +11,7 @@
     color-scheme: light;
     --ground: oklch(98.6% 0.005 95);
     --surface: oklch(100% 0 0);
-    --edge: oklch(28.3% 0.064 271 / 0.13);
+    --edge: oklch(28.3% 0.064 271 / 0.12);
     --edge-hi: oklch(28.3% 0.064 271 / 0.3);
     --ink: oklch(28.3% 0.064 271);
     --ink-soft: oklch(42% 0.05 271);
@@ -21,10 +21,14 @@
     --accent-wash: oklch(96% 0.02 315);
     --linked: oklch(96.5% 0.025 255);
     --linked-edge: oklch(57.4% 0.11 255);
+    --linked-ink: oklch(45% 0.11 255);
+    --target: oklch(95.5% 0.03 255);
     --mark: oklch(93% 0.07 95);
+    --mark-current: oklch(86% 0.12 85);
 
     --font: "Instrument Sans", system-ui, sans-serif;
     --display: "Sora", "Instrument Sans", system-ui, sans-serif;
+    --tiny: 0.75rem;
     --small: 0.8125rem;
     --space-1: 0.25rem;
     --space-2: 0.5rem;
@@ -32,12 +36,13 @@
     --space-4: 1.5rem;
     --space-5: 2.5rem;
     --radius: 6px;
+    --measure: 75ch;
   }
 }
 
 @layer reset {
   *, *::before, *::after { box-sizing: border-box; }
-  body, h1, h2, h3, h4, h5, p, ul, ol, dl, dd { margin: 0; }
+  body, h1, h2, h3, h4, h5, h6, p, ul, ol, dl, dd { margin: 0; }
   input, button { font: inherit; color: inherit; }
 }
 
@@ -51,12 +56,24 @@
   }
   a { color: var(--accent-hi); text-underline-offset: 0.15em; }
   :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  /* Targets of programmatic focus only (titles, main); Tab never stops there. */
+  [tabindex="-1"]:focus { outline: none; }
   mark { background: var(--mark); color: inherit; }
+  mark.current { background: var(--mark-current); }
   h1, h2, h3 { font-family: var(--display); font-weight: 600; line-height: 1.25; }
-  .skip { position: absolute; inset-inline-start: var(--space-3); inset-block-start: -3rem; background: var(--surface); padding: var(--space-2); }
-  .skip:focus { inset-block-start: var(--space-2); z-index: 10; }
+  .skip { position: absolute; inset-inline-start: var(--space-3); inset-block-start: -3rem; background: var(--surface); padding: var(--space-2); z-index: 10; }
+  .skip:focus { inset-block-start: var(--space-2); }
+  .visually-hidden {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  [hidden] { display: none !important; }
   @media (prefers-reduced-motion: no-preference) {
-    .card { transition: border-color 120ms, background-color 120ms; }
+    .card, .chip { transition: border-color 120ms, background-color 120ms; }
   }
 }
 
@@ -64,82 +81,94 @@
   .top {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-2) var(--space-5);
-    align-items: center;
-    padding: var(--space-3) var(--space-4);
-    background: var(--surface);
-    border-block-end: 1px solid var(--edge);
+    gap: var(--space-2) var(--space-4);
+    align-items: baseline;
+    padding: var(--space-3) var(--space-4) var(--space-2);
   }
   .workspace {
     display: grid;
-    grid-template-columns: 16rem minmax(0, 1fr);
+    grid-template-columns: 15rem minmax(0, 1fr);
     align-items: start;
   }
   /* With a selection the panel joins as a third column. */
-  .workspace.selecting { grid-template-columns: 16rem minmax(0, 1fr) minmax(22rem, 30rem); }
+  .workspace.selecting { grid-template-columns: 15rem minmax(0, 1fr) minmax(22rem, 28rem); }
   .controls {
     position: sticky;
     inset-block-start: 0;
     max-block-size: 100dvh;
     overflow-y: auto;
-    padding: var(--space-4) var(--space-3);
-    border-inline-end: 1px solid var(--edge);
+    padding: var(--space-3) var(--space-3) var(--space-4) var(--space-4);
   }
-  .board { padding: var(--space-4); min-inline-size: 0; }
-  .board:focus { outline: none; }
+  .main { padding: var(--space-3) var(--space-4) var(--space-5); min-inline-size: 0; }
   .panel {
     position: sticky;
     inset-block-start: 0;
     max-block-size: 100dvh;
     overflow-y: auto;
-    padding: var(--space-4);
+    padding: var(--space-3) var(--space-4) var(--space-5);
     background: var(--surface);
-    border-inline-start: 1px solid var(--edge);
+    box-shadow: -1px 0 0 var(--edge);
+    overflow-wrap: anywhere;
   }
-  .foot { padding: var(--space-4); color: var(--ink-faint); font-size: var(--small); border-block-start: 1px solid var(--edge); }
+  .foot { padding: var(--space-3) var(--space-4) var(--space-4); color: var(--ink-faint); font-size: var(--tiny); }
+  .foot p { max-inline-size: var(--measure); }
+
+  /* While a text is open, the filters have nothing to act on. */
+  .reading :is(.filters, .about) { display: none; }
 
   /* Medium: the panel lies over the board's right side. */
   @media (max-width: 72rem) {
-    .workspace.selecting { grid-template-columns: 16rem minmax(0, 1fr); }
+    .workspace.selecting { grid-template-columns: 15rem minmax(0, 1fr); }
     .panel {
       position: fixed;
       inset-block: 0;
       inset-inline-end: 0;
       inline-size: min(100%, 30rem);
+      max-block-size: none;
       z-index: 5;
-      box-shadow: -1px 0 0 var(--edge-hi);
+      box-shadow: -1px 0 0 var(--edge-hi), -8px 0 24px oklch(28.3% 0.064 271 / 0.08);
     }
   }
   /* Narrow: one column; the panel covers the screen. */
   @media (max-width: 48rem) {
+    .top { padding-inline: var(--space-3); }
     .workspace, .workspace.selecting { display: block; }
-    .controls { position: static; max-block-size: none; border-inline-end: 0; border-block-end: 1px solid var(--edge); }
-    .board { padding: var(--space-3); }
-    .panel { inline-size: 100%; }
+    .controls { position: static; max-block-size: none; padding: var(--space-2) var(--space-3); }
+    .main { padding: var(--space-3) var(--space-3) var(--space-5); }
+    .panel { inline-size: 100%; padding-inline: var(--space-3); }
+    .foot { padding-inline: var(--space-3); }
+    .about { margin-block-start: var(--space-3); }
   }
 }
 
 @layer components {
+  /* Head */
   .brand { display: flex; gap: var(--space-2); align-items: center; color: var(--ink); text-decoration: none; font-weight: 600; font-size: var(--small); }
-  .title { flex: 1 1 30rem; max-inline-size: 60rem; }
-  .title h1 { font-size: 1.375rem; }
-  .title p { color: var(--ink-soft); margin-block-start: var(--space-1); max-inline-size: 75ch; }
+  /* Scoped to the header: cards have a .title of their own. */
+  .top .title { flex: 1 1 28rem; max-inline-size: 62rem; }
+  .top .title h1 { font-size: 1.25rem; }
+  .top .title p { color: var(--ink-soft); font-size: 0.9375rem; margin-block-start: var(--space-1); max-inline-size: var(--measure); }
+  .links { display: flex; flex-wrap: wrap; gap: var(--space-3); font-size: var(--small); }
 
   /* Controls */
   .search label, .filter p { display: block; font-size: var(--small); font-weight: 600; margin-block-end: var(--space-1); }
   .search input {
     inline-size: 100%;
-    padding: 0.45rem var(--space-2);
+    padding: 0.4rem var(--space-2);
     border: 1px solid var(--edge-hi);
     border-radius: var(--radius);
     background: var(--surface);
   }
+  .hint { color: var(--ink-faint); font-size: var(--tiny); margin-block-start: var(--space-1); }
+  .hint .on-reader, .reading .hint .on-board { display: none; }
+  .reading .hint .on-reader { display: inline; }
   .filters > summary { display: list-item; cursor: pointer; font-size: var(--small); font-weight: 600; margin-block-start: var(--space-4); }
-  .filter { margin-block-start: var(--space-4); display: flex; flex-wrap: wrap; gap: var(--space-1); }
-  .filter p { flex-basis: 100%; }
+  .filters > summary .n { font-weight: 400; color: var(--ink-faint); margin-inline-start: 0.5em; }
+  .filter { margin-block-start: var(--space-3); display: flex; flex-wrap: wrap; gap: var(--space-1); }
+  .filter p { flex-basis: 100%; color: var(--ink-soft); }
   .chip {
-    padding: 0.2rem 0.6rem;
-    min-block-size: 1.75rem;
+    padding: 0.15rem 0.55rem;
+    min-block-size: 1.625rem;
     border: 1px solid var(--edge-hi);
     border-radius: 1rem;
     background: var(--surface);
@@ -149,65 +178,145 @@
   }
   .chip:hover { border-color: var(--accent); }
   .chip[aria-pressed="true"] { background: var(--accent-wash); border-color: var(--accent); color: var(--accent-hi); font-weight: 600; }
-  .chip .n { color: var(--ink-faint); font-weight: 400; margin-inline-start: 0.3em; }
-  .reset { margin-block-start: var(--space-3); border: 0; padding: 0; background: none; color: var(--accent-hi); text-decoration: underline; cursor: pointer; font-size: var(--small); }
+  .chip .n { color: var(--ink-faint); font-weight: 400; margin-inline-start: 0.3em; font-variant-numeric: tabular-nums; }
+  .chip.none:not([aria-pressed="true"]) { color: var(--ink-faint); border-color: var(--edge); }
+  .chip[aria-disabled="true"] { cursor: default; }
+  .chip[aria-disabled="true"]:hover { border-color: var(--edge); }
+  .text-button { border: 0; padding: 0; background: none; color: var(--accent-hi); text-decoration: underline; text-underline-offset: 0.15em; cursor: pointer; font-size: var(--small); }
+  .reset { margin-block-start: var(--space-3); }
   .about { margin-block-start: var(--space-5); font-size: 0.875rem; color: var(--ink-soft); }
-  .about summary { cursor: pointer; font-weight: 600; color: var(--ink); }
+  .about summary { cursor: pointer; font-weight: 600; color: var(--ink); font-size: var(--small); }
   .about p, .about dl { margin-block-start: var(--space-2); }
   .glossary dt { font-weight: 600; color: var(--ink); margin-block-start: var(--space-2); }
 
   /* Board */
-  .status { color: var(--ink-faint); font-size: var(--small); margin-block-end: var(--space-2); }
   .group + .group { margin-block-start: var(--space-5); }
-  .group > h2 { font-size: 1.125rem; margin-block-end: var(--space-2); }
-  .group h3 { font-family: var(--font); font-size: var(--small); font-weight: 600; color: var(--ink-soft); margin-block: var(--space-4) var(--space-2); }
-  .group h2 .n, .group h3 .n { font-family: var(--font); font-weight: 400; color: var(--ink-faint); margin-inline-start: 0.4em; }
+  .group > h2 { font-size: 1.0625rem; margin-block-end: var(--space-2); }
+  .group h2 .n { font-family: var(--font); font-size: var(--small); font-weight: 400; color: var(--ink-faint); margin-inline-start: 0.6em; }
+  .group :is(h3, h4) { font-family: var(--font); font-size: var(--small); font-weight: 600; color: var(--ink-soft); margin-block: var(--space-3) var(--space-2); }
+  .group h3.doc-head { font-family: var(--display); font-size: 0.9375rem; color: var(--ink); margin-block-start: var(--space-4); }
+  .group h2 + h3.doc-head { margin-block-start: var(--space-2); }
   /* Cards keep their own height, so short cards leave no empty space. */
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr)); gap: var(--space-2); align-items: start; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 15rem), 1fr)); gap: var(--space-2); align-items: start; }
   .empty { color: var(--ink-faint); font-size: 0.875rem; }
 
   .card {
+    position: relative;
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
-    padding: var(--space-3);
+    gap: 0.375rem;
+    padding: 0.75rem 0.875rem;
     background: var(--surface);
     border: 1px solid var(--edge);
     border-radius: var(--radius);
-    color: var(--ink);
-    text-decoration: none;
+    overflow-wrap: anywhere;
   }
   .card:hover { border-color: var(--edge-hi); }
   .card.selected { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
   .card.linked { background: var(--linked); border-color: var(--linked-edge); }
-  .card .link-note { font-size: 0.75rem; font-weight: 600; color: oklch(45% 0.11 255); }
-  .card h4 { font-family: var(--display); font-size: 0.975rem; font-weight: 600; line-height: 1.3; }
-  .card .text { font-size: 0.9375rem; line-height: 1.45; }
-  .card .abstract { font-size: 0.875rem; color: var(--ink-soft); line-height: 1.45; }
-  .card .meta { display: flex; flex-wrap: wrap; gap: 0 var(--space-3); font-size: 0.75rem; color: var(--ink-faint); }
-  .card .meta .strong { color: var(--ink); font-weight: 600; }
-  .card .basis { font-size: 0.75rem; color: var(--ink-soft); }
+  .card-link { color: var(--ink); text-decoration: none; }
+  /* The whole card answers a click; snippet links lie above this layer. */
+  .card-link::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+  .card:hover .card-link { text-decoration: underline; text-decoration-color: var(--edge-hi); }
+  .card .link-note { font-size: var(--tiny); font-weight: 600; color: var(--linked-ink); }
+  .card .title { font-family: var(--display); font-size: 0.9rem; font-weight: 600; line-height: 1.3; }
+  .card .text { font-size: 0.9rem; line-height: 1.45; }
+  .card.clamped .text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; }
+  .card .abstract { font-size: 0.8125rem; color: var(--ink-soft); line-height: 1.45; }
+  .meta { display: flex; flex-wrap: wrap; gap: 0 var(--space-3); font-size: var(--tiny); color: var(--ink-faint); }
+  .meta .strong { color: var(--ink); font-weight: 600; }
+  .card .basis { font-size: var(--tiny); color: var(--ink-soft); }
+  .snippet {
+    position: relative;
+    z-index: 1;
+    display: block;
+    font-size: var(--small);
+    line-height: 1.45;
+    color: var(--ink-soft);
+    text-decoration: none;
+  }
+  .snippet:hover { color: var(--ink); text-decoration: underline; text-decoration-color: var(--edge-hi); }
+  .snippet .where { color: var(--accent-hi); font-weight: 600; margin-inline-end: var(--space-2); }
 
   /* Panel */
-  .panel .close { float: inline-end; border: 1px solid var(--edge-hi); border-radius: var(--radius); background: var(--surface); padding: 0.15rem 0.6rem; cursor: pointer; font-size: var(--small); }
+  .panel-head { display: flex; gap: var(--space-3); align-items: baseline; justify-content: space-between; }
   .panel .kind { font-size: var(--small); color: var(--ink-faint); }
-  .panel h2 { font-size: 1.2rem; margin-block: var(--space-1) var(--space-3); clear: none; }
-  .panel h2:focus { outline: none; }
-  .panel h3 { font-size: 0.95rem; margin-block: var(--space-4) var(--space-2); padding-block-end: var(--space-1); border-block-end: 1px solid var(--edge); }
+  .close { flex: none; border: 1px solid var(--edge-hi); border-radius: var(--radius); background: var(--surface); padding: 0.15rem 0.6rem; cursor: pointer; font-size: var(--small); }
+  .close:hover { border-color: var(--accent); }
+  .panel h2 { font-size: 1.125rem; margin-block: var(--space-2) var(--space-3); }
+  .panel h3 { font-size: 0.875rem; margin-block: var(--space-4) var(--space-2); }
   .facts { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--space-1) var(--space-3); font-size: 0.875rem; }
   .facts dt { color: var(--ink-faint); }
+  /* A date note may hold a long unbroken token. */
+  .facts dd { min-inline-size: 0; overflow-wrap: anywhere; }
   .facts .def { display: block; color: var(--ink-faint); font-size: var(--small); }
-  .original { display: inline-block; margin-block-start: var(--space-3); font-weight: 600; }
-  .panel ul.items { list-style: none; padding: 0; }
-  .panel ul.items li + li { margin-block-start: var(--space-2); }
-  .panel ul.items a { display: block; padding: var(--space-2); border: 1px solid var(--edge); border-radius: var(--radius); color: var(--ink); text-decoration: none; font-size: 0.875rem; }
-  .panel ul.items a:hover { border-color: var(--accent); }
-  .panel ul.items .meta { display: block; font-size: 0.75rem; color: var(--ink-faint); margin-block-start: var(--space-1); }
-  .summary { font-size: 0.9rem; line-height: 1.55; }
-  .summary :is(p, ul) { margin-block-end: var(--space-2); }
-  .summary ul { padding-inline-start: 1.1rem; }
-  .summary li + li { margin-block-start: var(--space-1); }
-  .summary :is(h4, h5, h6) { font-family: var(--font); font-size: 0.9rem; font-weight: 600; margin-block: var(--space-3) var(--space-1); }
-  .summary .table-wrap { overflow-x: auto; }
-  .fine { font-size: 0.75rem; color: var(--ink-faint); margin-block-start: var(--space-3); }
+  .actions { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); margin-block-start: var(--space-3); font-weight: 600; font-size: 0.875rem; }
+  .items { list-style: none; padding: 0; font-size: 0.875rem; }
+  .items li + li { margin-block-start: var(--space-2); }
+  .items > li > a { color: var(--ink); text-decoration: none; }
+  .items > li > a:hover { text-decoration: underline; }
+  .items > li > a:hover { color: var(--accent-hi); text-decoration-color: currentColor; }
+  .items .meta { display: block; margin-block-start: 0.125rem; }
+  .items .meta a { color: var(--ink-faint); }
+  .fine { font-size: var(--tiny); color: var(--ink-faint); margin-block-start: var(--space-3); }
+
+  /* Rendered Markdown: summaries, documents, web sources */
+  .prose { line-height: 1.6; }
+  .prose :is(p, ul, ol, .table-wrap, pre) { margin-block-end: var(--space-3); }
+  .prose :is(h3, h4, h5, h6) { font-family: var(--display); font-size: 1rem; line-height: 1.3; margin-block: var(--space-4) var(--space-2); }
+  .prose :is(h5, h6) { font-family: var(--font); font-size: 0.9375rem; }
+  .prose :is(ul, ol) { padding-inline-start: 1.25rem; }
+  .prose li + li { margin-block-start: var(--space-1); }
+  .prose code { font-size: 0.9em; overflow-wrap: anywhere; }
+  /* Citations are evidence links: present, but quieter than the rule. */
+  .prose a[data-doc] { color: var(--ink-faint); text-decoration-color: var(--edge-hi); }
+  .prose a[data-doc]:hover { color: var(--accent-hi); text-decoration-color: currentColor; }
+  .prose .target, .page.target { background: var(--target); box-shadow: -0.5rem 0 0 var(--target); }
+  .table-wrap { overflow-x: auto; }
+  .prose table { border-collapse: collapse; font-size: 0.875rem; }
+  .prose :is(th, td) { text-align: start; vertical-align: top; padding: var(--space-1) var(--space-2); border-block-end: 1px solid var(--edge); }
+  .prose th { font-weight: 600; }
+  .summary { font-size: 0.875rem; line-height: 1.55; }
+  .summary :is(p, ul, ol, .table-wrap) { margin-block-end: var(--space-2); }
+  .summary :is(h3, h4, h5, h6) { font-family: var(--font); font-size: 0.875rem; font-weight: 600; margin-block: var(--space-3) var(--space-1); }
+
+  /* Reader */
+  .reader { max-inline-size: var(--measure); }
+  .reader-bar {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 2;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
+    align-items: center;
+    padding-block: var(--space-2);
+    background: var(--ground);
+    font-size: var(--small);
+    color: var(--ink-faint);
+  }
+  .reader-bar .bar-group { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+  .reader-bar input { inline-size: 4rem; padding: 0.1rem var(--space-1); border: 1px solid var(--edge-hi); border-radius: var(--radius); background: var(--surface); }
+  .reader-bar button:not(.text-button) { min-inline-size: 1.75rem; min-block-size: 1.75rem; border: 1px solid var(--edge-hi); border-radius: var(--radius); background: var(--surface); cursor: pointer; }
+  .reader-bar .end { margin-inline-start: auto; font-weight: 600; }
+  .reader > header { padding-block: var(--space-3) var(--space-2); }
+  .reader h2 { font-size: 1.375rem; margin-block: var(--space-1) var(--space-3); }
+  .reader .meta { font-size: var(--small); }
+  .reader > section { margin-block-start: var(--space-4); }
+  .reader > section > h3 { font-size: 1rem; margin-block-end: var(--space-2); }
+
+  .cited-box > summary { display: list-item; cursor: pointer; font-family: var(--display); font-weight: 600; margin-block-end: var(--space-2); }
+  .cited { list-style: none; padding: 0; font-size: 0.9375rem; }
+  .cited > li + li { margin-block-start: var(--space-3); }
+  .cited .rule { display: block; color: var(--ink); text-decoration: none; }
+  .cited .rule:hover { text-decoration: underline; text-decoration-color: var(--edge-hi); }
+  .cited .meta a { color: var(--ink-faint); }
+
+  [id^="c-"], [id^="h-"], .page, mark { scroll-margin-block-start: 4rem; }
+  /* A page break is a boundary the reader needs, so it keeps a hairline. */
+  .page { padding-block: var(--space-3); }
+  .page + .page { border-block-start: 1px solid var(--edge); }
+  .page-no { font-size: var(--small); font-weight: 600; color: var(--ink-faint); margin-block-end: var(--space-2); }
+  .page-text { font-size: 0.9375rem; line-height: 1.55; overflow-wrap: anywhere; }
+  .page-text + .page-text { margin-block-start: var(--space-2); }
 }
