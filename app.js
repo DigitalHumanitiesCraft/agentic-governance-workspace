@@ -1072,7 +1072,8 @@
     $("work").replaceChildren(
       // The file is named as text here; each to-do group links its origin.
       el("p", { class: "work-lead" }, "Laufende Arbeit, nächste Schritte und Kundenprojekte, zusammengestellt aus ",
-        "ACTIVE-WORK.md und den Projektdokumenten. Die Ansicht zeigt nur an, geändert wird in den Dokumenten selbst."),
+        // nowrap keeps the file name from breaking at its hyphen on phones.
+        el("span", { class: "nowrap" }, "ACTIVE-WORK.md"), " und den Projektdokumenten. Die Ansicht zeigt nur an, geändert wird in den Dokumenten selbst."),
       el("div", { class: "work-top" }, todos, side),
       projectList);
   }

@@ -260,6 +260,7 @@
   /* Arbeitsbereich */
   .work { max-inline-size: 110rem; }
   .work-lead { color: var(--ink-soft); font-size: 0.9375rem; max-inline-size: var(--measure); margin-block-end: var(--space-4); }
+  .nowrap { white-space: nowrap; }
   .work-top { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--space-3); align-items: start; }
   .work-side { display: grid; gap: var(--space-3); }
   .work-block, .project {
