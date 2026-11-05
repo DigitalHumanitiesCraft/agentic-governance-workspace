@@ -91,10 +91,12 @@
   let state = parseHash();
   let opener = null;
 
+  // A selection pushes an entry marked as the app's own, so closing can go
+  // back instead of adding another entry.
   function go(changes, push = false) {
     state = { ...state, ...changes };
-    if (push) history.pushState(null, "", hashFor(state));
-    else history.replaceState(null, "", hashFor(state));
+    if (push) history.pushState({ app: true }, "", hashFor(state));
+    else history.replaceState(history.state, "", hashFor(state));
     render();
   }
 
@@ -315,6 +317,9 @@
     const panel = $("panel");
     $("workspace").classList.toggle("selecting", Boolean(item));
     panel.hidden = !item;
+    // Where the panel covers the page, the content behind it is out of reach.
+    const covering = Boolean(item) && window.matchMedia("(max-width: 72rem)").matches;
+    for (const el of document.querySelectorAll(".controls, #board, .foot, .top")) el.inert = covering;
     if (!item) {
       shown = "";
       return;
@@ -327,10 +332,13 @@
     }
   }
 
+  // Closing returns focus to the card that opened the panel, once the board
+  // is drawn again (after history.back() that happens on popstate).
+  let returnFocus = false;
   function closePanel() {
-    go({ sel: "" }, true);
-    const back = opener && document.querySelector(`.card[data-id="${CSS.escape(opener)}"]`);
-    (back || $("board")).focus({ preventScroll: Boolean(back) });
+    returnFocus = true;
+    if (history.state && history.state.app) history.back();
+    else go({ sel: "" });
   }
 
   // ---- Render ------------------------------------------------------------------
@@ -339,10 +347,17 @@
     syncControls();
     renderBoard();
     renderPanel();
+    if (returnFocus && !state.sel) {
+      returnFocus = false;
+      const back = opener && document.querySelector(`.card[data-id="${CSS.escape(opener)}"]`);
+      (back || $("board")).focus({ preventScroll: Boolean(back) });
+    }
   }
 
   document.addEventListener("click", (event) => {
-    const a = event.target.closest("a[href^='#']");
+    // Only links that select a card are handled here; the skip link and
+    // other anchors keep their normal behaviour.
+    const a = event.target.closest("a[href*='sel=']");
     if (!a || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
     event.preventDefault();
     const card = a.closest(".card");
@@ -358,7 +373,8 @@
   });
   window.addEventListener("popstate", () => { state = parseHash(); render(); });
   window.addEventListener("hashchange", () => {
-    if (location.hash !== hashFor(state)) { state = parseHash(); render(); }
+    // An empty hash and "#" are the same state; a second render would drop focus.
+    if ((location.hash || "#") !== hashFor(state)) { state = parseHash(); render(); }
   });
 
   buildControls();
