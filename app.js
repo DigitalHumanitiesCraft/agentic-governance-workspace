@@ -417,7 +417,7 @@
       for (const node of document.querySelectorAll("[data-work]")) node.hidden = false;
     }
     // On a phone the filters fold away, so the cards come first.
-    if (window.matchMedia("(max-width: 48rem)").matches && !filtered()) $("filters").open = false;
+    if (window.matchMedia("(max-width: 48rem)").matches) $("filters").open = false;
   }
 
   const activeFacets = () => FACETS.reduce((n, f) => n + state[f.key].length, 0);
@@ -1232,6 +1232,9 @@
   });
 
   document.addEventListener("scroll", trackPage, { passive: true });
+  window.matchMedia("(max-width: 48rem)").addEventListener("change", event => {
+    $("filters").open = !event.matches;
+  });
   window.matchMedia("(max-width: 85rem)").addEventListener("change", () => renderPanel(selected(), readable(byId.get(state.doc)) ? byId.get(state.doc) : null));
 
   history.replaceState({ ...history.state, depth: depth() }, "", hashFor(state));
