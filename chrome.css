@@ -1,0 +1,63 @@
+@font-face { font-family: "Instrument Sans"; src: url("assets/fonts/instrument-sans-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Instrument Sans"; src: url("assets/fonts/instrument-sans-latin-600-normal.woff2") format("woff2"); font-weight: 600; font-display: swap; }
+
+/* Shared site chrome is scoped so the revenue charts keep their own tokens. */
+.site-header, .site-footer {
+  box-sizing: border-box;
+  color: #202e51;
+  font-family: "Instrument Sans", system-ui, sans-serif;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.site-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.5rem;
+  padding: 0.75rem 1.5rem;
+  background: #fff;
+}
+.site-brand {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.5rem;
+  color: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.site-brand img { display: block; inline-size: 1.75rem; block-size: 2rem; object-fit: contain; }
+.site-title {
+  min-inline-size: 0;
+  flex: 1 1 18rem;
+  color: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+.site-nav, .site-resources { display: flex; flex-wrap: wrap; align-items: center; gap: 0.25rem 1rem; }
+.site-nav a, .site-resources a { display: inline-flex; align-items: center; min-block-size: 2rem; color: #593064; text-decoration: none; }
+.site-nav a { font-weight: 600; }
+.site-nav a[aria-current="page"] { color: #202e51; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 0.4em; }
+.site-header a:hover, .site-footer a:hover { text-decoration: underline; }
+.site-header a:focus-visible, .site-footer a:focus-visible { outline: 2px solid #83438e; outline-offset: 3px; text-decoration: underline; }
+.site-footer { padding: 1rem 1.5rem 1.5rem; color: #52607b; }
+.site-footer p { margin: 0.5rem 0 0; max-inline-size: 85ch; font-size: 0.8125rem; }
+.site-footer p a { color: #593064; text-underline-offset: 0.15em; }
+.site-skip { position: absolute; inset-inline-start: 1rem; inset-block-start: -5rem; z-index: 20; padding: 0.5rem 1rem; background: #fff; color: #593064; }
+.site-skip:focus { inset-block-start: 0.5rem; }
+.site-page-heading h1 { margin: 0; }
+.site-page-heading .sub { max-inline-size: 75ch; }
+@media (max-width: 48rem) {
+  .site-header, .site-footer { padding-inline: 1rem; }
+  .site-header { gap: 0.25rem 1rem; }
+  .site-title { flex-basis: 100%; font-size: 0.9375rem; }
+  .site-nav { gap: 0.25rem 0.5rem; }
+  .site-nav a { min-block-size: 2.5rem; font-size: 0.8125rem; }
+  .site-brand span { font-size: 0.75rem; }
+}
+@media print {
+  .site-header, .site-resources, .site-skip { display: none; }
+}

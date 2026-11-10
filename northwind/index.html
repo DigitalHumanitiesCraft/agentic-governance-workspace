@@ -5,17 +5,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Northwind Traders, Umsatz 1996 bis 1998</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="../chrome.css">
+  <link rel="icon" href="../assets/dhcraft_logo_watercolor.png">
 </head>
 <body>
-  <header class="top">
-    <div>
+  <a class="site-skip" href="#main">Zum Inhalt springen</a>
+  <header class="site-header">
+    <a class="site-brand" href="https://dhcraft.org" rel="noopener">
+      <img src="../assets/dhcraft_logo_watercolor.png" alt="" width="28" height="32">
+      <span>Digital Humanities Craft</span>
+    </a>
+    <a class="site-title" href="../">Agentic Engineering und Governance</a>
+    <nav class="site-nav" aria-label="Hauptnavigation">
+      <a href="../">Wissen</a>
+      <a href="../#v=arbeit">Arbeitsbereich</a>
+      <a href="./" aria-current="page">Umsatz</a>
+      <a href="../ueber.html">Über diese Seite</a>
+    </nav>
+  </header>
+
+  <main id="main" tabindex="-1">
+    <div class="site-page-heading">
       <h1>Northwind Traders, Umsatz 1996 bis 1998</h1>
       <p class="sub">Übungsdaten aus der Beispieldatenbank Northwind. Ausgewertet sind nur Bestellungen und Produkte, ohne Kunden- oder Personaldaten.</p>
     </div>
-    <a class="back" href="../index.html">Zur Arbeitsfläche</a>
-  </header>
-
-  <main>
     <section class="figures" aria-label="Kennzahlen">
       <div class="tile"><p class="label" id="t-rev-label">Umsatz</p><p class="value" id="t-rev"></p></div>
       <div class="tile"><p class="label">Anteil am Gesamtumsatz</p><p class="value" id="t-share"></p></div>
@@ -55,6 +68,16 @@
       <p>Umsatz einer Bestellposition ist Preis mal Menge mal eins minus Rabatt. Das Land ist das Lieferland der Bestellung. Noch nicht versandte Bestellungen zählen mit, weil sie gebuchte Verkäufe sind. Der Datensatz nennt keine Währung. Die Seite enthält nur Summen nach Monat, Lieferland und Produkt, die das Skript <code>scripts/northwind_umsatz.py --web</code> lokal berechnet. Die Kundenliste und die Liste der Mitarbeitenden wurden nicht gelesen.</p>
     </details>
   </main>
+
+  <footer class="site-footer">
+    <nav class="site-resources" aria-label="Materialien">
+      <a href="../material/DHCraft_Governance_AI_Agents_Beschlussvorlage_v1.0.pdf">Governance (PDF)</a>
+      <a href="../material/DHCraft_Pitch_Regeln_fuer_AI_Agents.pptx">Pitch (PPTX)</a>
+      <a href="https://github.com/DigitalHumanitiesCraft/agentic-governance-vault">Vault</a>
+      <a href="https://github.com/DigitalHumanitiesCraft/agentic-governance-workspace">Code</a>
+    </nav>
+    <p>Digital Humanities Craft. Inhalte unter <a href="https://creativecommons.org/licenses/by/4.0/deed.de">CC BY 4.0</a>, Code unter <a href="../LICENSE.md">MIT</a>. Quellen behalten ihre eigenen Rechte.</p>
+  </footer>
 
   <div class="tooltip" id="tip" role="status" hidden></div>
 

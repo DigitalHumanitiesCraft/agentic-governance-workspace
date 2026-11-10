@@ -7,30 +7,38 @@
   <meta name="description" content="Regeln für AI Agents bei Digital Humanities Craft, mit Quellen, Governance-Beschlussvorlage, Pitch und einer Übungsauswertung. Ergebnis eines Workshops.">
   <link rel="icon" href="assets/dhcraft_logo_watercolor.png">
   <link rel="stylesheet" href="start.css">
+  <link rel="stylesheet" href="chrome.css">
 </head>
 <body>
-  <header class="top">
-    <a class="brand" href="https://dhcraft.org" rel="noopener">
+  <a class="site-skip" href="#main">Zum Inhalt springen</a>
+  <header class="site-header">
+    <a class="site-brand" href="https://dhcraft.org" rel="noopener">
       <img src="assets/dhcraft_logo_watercolor.png" alt="" width="28" height="32">
       <span>Digital Humanities Craft</span>
     </a>
+    <a class="site-title" href="./">Agentic Engineering und Governance</a>
+    <nav class="site-nav" aria-label="Hauptnavigation">
+      <a href="./">Wissen</a>
+      <a href="./#v=arbeit">Arbeitsbereich</a>
+      <a href="northwind/">Umsatz</a>
+      <a href="ueber.html" aria-current="page">Über diese Seite</a>
+    </nav>
   </header>
 
-  <main>
+  <main id="main" tabindex="-1">
     <section class="intro">
-      <p class="back"><a href="./">Zur Arbeitsfläche</a></p>
       <h1>Über diese Seite</h1>
       <p>Welche Regeln braucht eine kleine Forschungs- und Softwarefirma in Graz, damit AI Agents regelkonform, sicher und nachprüfbar arbeiten? Diese Seite zeigt, was in einem Workshop am 5. November 2026 aus einer quellengestützten Wissensbasis entstanden ist. Jede Regel nennt ihre Quellen mit der Seite, auf der sie stehen. Die Quellen stammen aus dem Jahr 2026, ergänzt um wenige ältere Rechtstexte und Leitlinien zum Datenschutz.</p>
     </section>
 
     <figure class="result">
       <img src="material/endergebnis_wissensbasis.png" alt="Sechs Ansichten des Ergebnisses: Dashboard mit Karten, Lesebereich mit Originalseite, öffentliche Arbeitsfläche, Umsatzauswertung, Governance als PDF und Pitch" width="1920" height="1080">
-      <figcaption>Das Ergebnis in sechs Ansichten. Das interne Dashboard mit Volltexten, Notizen und Projekten bleibt lokal, die öffentliche Arbeitsfläche nutzt dieselbe Oberfläche ohne sie.</figcaption>
+      <figcaption>Die Abbildung dokumentiert den Workshopstand vom 5. November 2026. Das interne Dashboard mit Originalvolltexten der Quellen bleibt lokal.</figcaption>
     </figure>
 
     <ul class="entries">
       <li>
-        <h2><a href="./">Leitlinien und Quellen als Karten</a></h2>
+        <h2><a href="./">Leitlinien und Quellen</a></h2>
         <p>Die Regeln für Projekte, Forschung, Programmierung und Organisation, jede mit Status, Ziel und Belegstellen, und die Quellen mit einer eigenen Zusammenfassung. Suche und Filter laufen im Browser.</p>
       </li>
       <li>
@@ -54,8 +62,17 @@
     <section class="notes">
       <h2>Herkunft und Grenzen</h2>
       <p>Die Quellen gehören ihren Herausgebern und sind hier nur verlinkt, ihre Volltexte sind nicht Teil dieser Seite. Die Regeln sind ein Arbeitsstand einer Organisation und keine Rechtsberatung. Die Northwind-Daten sind Beispieldaten von Microsoft unter der <a href="northwind/LICENSE-northwind.txt">MIT License</a>.</p>
-      <p>Texte und Daten von Digital Humanities Craft stehen unter CC BY 4.0, der Code unter MIT, siehe <a href="https://github.com/DigitalHumanitiesCraft/agentic-governance-workspace">Repository</a>.</p>
+
     </section>
   </main>
+  <footer class="site-footer">
+    <nav class="site-resources" aria-label="Materialien">
+      <a href="material/DHCraft_Governance_AI_Agents_Beschlussvorlage_v1.0.pdf">Governance (PDF)</a>
+      <a href="material/DHCraft_Pitch_Regeln_fuer_AI_Agents.pptx">Pitch (PPTX)</a>
+      <a href="https://github.com/DigitalHumanitiesCraft/agentic-governance-vault">Vault</a>
+      <a href="https://github.com/DigitalHumanitiesCraft/agentic-governance-workspace">Code</a>
+    </nav>
+    <p>Digital Humanities Craft. Inhalte unter <a href="https://creativecommons.org/licenses/by/4.0/deed.de">CC BY 4.0</a>, Code unter <a href="LICENSE.md">MIT</a>. Quellen behalten ihre eigenen Rechte.</p>
+  </footer>
 </body>
 </html>

@@ -1,34 +1,15 @@
 /*
- * Card dashboard of the knowledge base, one code base for two builds.
+ * Source-backed rules and projects from the generated public data.js.
+ * Navigation labels are editorial aids; the complete rule wording and its
+ * citations remain authoritative in the detail. Search, filters, selection
+ * and project sections live in the URL and preserve browser history.
  *
- * Data: window.KB_DATA from data.js, written by scripts/build_dashboard.py.
- * The internal build (dashboard/) holds everything: rules of both rule
- * documents, sources with summary and full text, knowledge documents, notes
- * and protocols. The public build (public/, a copy of this code) holds source
- * metadata, own summaries and the rules of the guidelines. Features follow
- * the data: without full text there is no reader, a filter with fewer than
- * two values is not drawn.
+ * Classic scripts and global data deliberately support opening from disk.
+ * Upgrade path: serve the application and use modules with JSON data.
  *
- * Two views: Wissen, the cards of rules, sources and documents, and the
- * Arbeitsbereich (window.KB_DATA.work), the running state from ACTIVE-WORK.md
- * and the client projects with their next steps, revenue figures and the
- * rules they apply. Both builds carry it; its links lead into the dashboard
- * (internal) or into the public vault repository (public).
- *
- * State (view, search, filters, selected card, open document, page, cited
- * passage, project) lives in the URL hash, so a reload or a link restores the
- * view.
- * Selecting a card or opening a document pushes a history entry that keeps
- * the scroll position; typing and filtering replace the entry.
- *
- * Deliberate deviation from the no-build house regime: a classic script and
- * data as a global, because the page is opened by double click from the file
- * system, where browsers block module scripts and fetch(). Upgrade path:
- * serve the folder and switch to type="module" with fetch("data.json").
- *
- * Trust boundary: summary and body HTML come pre-rendered from Markdown with
- * raw HTML escaped by the build script; PDF page text and all metadata are
- * inserted with textContent only.
+ * Trust boundary: HTML in the generated data is escaped by the upstream
+ * Markdown exporter. Metadata, navigation labels and source text are always
+ * inserted with textContent. No external service is contacted by the search.
  */
 (function () {
   "use strict";
@@ -46,7 +27,7 @@
   const DATA = window.KB_DATA;
   if (!DATA) {
     $("board").replaceChildren(el("p", { class: "empty" },
-      "Die Daten fehlen. Erzeuge sie im Ordner wissensbasis mit: uv run scripts/build_dashboard.py"));
+      "Die Inhalte konnten nicht geladen werden. Lade die Seite erneut."));
     return;
   }
 
@@ -68,73 +49,62 @@
     knowledge: { many: "Wissensdokumente", one: "Wissensdokument" },
     note: { many: "Notizen, Protokolle und Projekte", one: "Notiz" },
   };
+  // Editorial navigation labels; complete rule wording remains in the detail.
+  const RULE_LABELS = new Map([
+    "Datenflüsse und Verarbeitungsrollen dokumentieren",
+    "Verarbeitungsverzeichnis aktualisieren",
+    "Rechtsgrundlage und Folgenabschätzung prüfen",
+    "Personendaten nur an gebundene Dienste geben",
+    "Agentenzugriff auf den Auftrag beschränken",
+    "Agentengedächtnis nach Projekt trennen",
+    "Folgenreiche Entscheidungen Menschen überlassen",
+    "Kunden über den KI-Einsatz informieren",
+    "Dialogagenten als KI erkennbar machen",
+    "Kennzeichnung interner und öffentlicher Texte prüfen",
+    "Verantwortung bei Veröffentlichung dokumentieren",
+    "Forschungsstandards in Kooperationen einhalten",
+    "KI-Regeln fremder Repositories beachten",
+    "KI-Einsatz in Forschungsarbeiten offenlegen",
+    "KI-Einsatz in Förderanträgen offenlegen",
+    "Referenzen und Tatsachen am Original prüfen",
+    "Methodische Prüfpunkte vorsehen",
+    "Agentische Forschungsschritte dokumentieren",
+    "Rechtsgrundlage für externe Datenweitergabe klären",
+    "Forschungsausnahme des AI Act prüfen",
+    "Vertraulichkeit und Verantwortung im Peer Review sichern",
+    "TEI-Encoding am Ausgangstext prüfen",
+    "Quellenauswahl und Synthesen fachlich prüfen",
+    "Relevanzschwellen bei Modellwechsel prüfen",
+    "Code und Methoden veröffentlichen",
+    "Eingaben, Datenzugriff und Autonomie begrenzen",
+    "Fremde Inhalte als mögliche Angriffsquelle behandeln",
+    "Coding Agents in isolierten Umgebungen ausführen",
+    "Folgenreiche Aktionen technisch freigeben lassen",
+    "Nur freigegebene Tools in festen Versionen laden",
+    "Existenz und Herkunft von Dependencies prüfen",
+    "Versionen in CI und Containern festschreiben",
+    "Vor Commit und Push auf Secrets prüfen",
+    "Agentencode vor dem Merge prüfen",
+    "Auch kleine Tools angemessen absichern",
+    "XML zusätzlich fachlich prüfen",
+    "Agentennachrichten als solche kennzeichnen",
+    "Änderungen klein und abgestimmt halten",
+    "Eigene Programmierkompetenz erhalten",
+    "KI-Kompetenz im Team unterstützen",
+    "Pflicht zur Datenschutzbeauftragung prüfen",
+    "Verantwortung für den Agenteneinsatz zuweisen",
+    "Freigegebene KI-Werkzeuge registrieren",
+    "Agenten schrittweise einführen",
+    "Agentenprotokolle geschützt aufbewahren",
+    "Alle Agenten jederzeit stoppen können"
+  ].map((label,i) => [`r-leitlinien-dhcraft-c-${i+1}`, label]));
+  const ruleLabel = rule => RULE_LABELS.get(rule.id) || rule.text;
   const SNIPPETS = 2;
   const SNIPPET_RADIUS = 70;
 
-  // ---- Text folding and query ----------------------------------------------
+  const { fold, parseQuery, count, score, needles, suggestionsFor, nextSuggestion } = window.KB_SEARCH;
 
-  // Lower case, without diacritics, hyphens and dashes as spaces, so that
-  // "Prompt-Injection" finds "prompt injection" and ä matches a. The fold
-  // keeps the string length, so match positions point into the original
-  // text for snippets and highlighting.
-  const MARKS = /[̀-ͯ]/g;
-  const DASHES = /[-‐‑–]/g;
-  function fold(text) {
-    const quick = text.toLowerCase().normalize("NFD").replace(MARKS, "");
-    let out = quick;
-    if (quick.length !== text.length) {
-      out = "";
-      for (const ch of text) {
-        const f = ch.toLowerCase().normalize("NFD").replace(MARKS, "");
-        out += f.length === ch.length ? f : ch;
-      }
-    }
-    return out.replace(DASHES, " ");
-  }
-
-  // Search forms of one query word: "massnahme" also finds "Maßnahme" and
-  // "pruefung" finds "Prüfung"; the reverse needs the unfolded word, because
-  // folding drops the umlaut, so "Prüfung" also finds "Pruefung" and
-  // "Maßnahme" finds "Massnahme". The umlaut form applies only inside a word,
-  // so English "true", "does" or "queue" stay as typed.
-  const SPELLED = { ä: "ae", ö: "oe", ü: "ue", ß: "ss" };
-  // Each "ss" may stand for ß or not ("ausschliesslich" is "ausschließlich"),
-  // so every combination is a form; three occurrences give eight.
-  function sharpS(term) {
-    const parts = term.split("ss");
-    if (parts.length < 2 || parts.length > 4) return [term.replace(/ss/g, "ß")];
-    let out = [parts[0]];
-    for (const part of parts.slice(1)) out = out.flatMap((head) => [head + "ss" + part, head + "ß" + part]);
-    return out;
-  }
-  function forms(word) {
-    const term = fold(word);
-    const set = new Set([term, term.replace(/(^|[^q])([aou])e(?=[a-zß]{2})/g, "$1$2"), ...sharpS(term)]);
-    if (/[äöüß]/.test(word)) set.add(fold(word.replace(/[äöüß]/g, (c) => SPELLED[c])));
-    return [...set].filter(Boolean);
-  }
-
-  /** @returns {{words: string[][], phrase: string[] | null, empty: boolean}} */
-  function parseQuery(raw) {
-    const lower = raw.toLowerCase().normalize("NFC").replace(DASHES, " ").replace(/[„“”]/g, '"');
-    const words = [];
-    lower.replace(/"([^"]+)"|(\S+)/g, (_, quoted, word) => {
-      const term = (quoted || word).trim().replace(/\s+/g, " ");
-      if (term) words.push(forms(term));
-      return "";
-    });
-    const whole = lower.replace(/"/g, "").trim().replace(/\s+/g, " ");
-    return { words, phrase: words.length > 1 && whole ? forms(whole) : null, empty: !words.length };
-  }
-
-  function count(text, needle, cap) {
-    let n = 0;
-    for (let at = text.indexOf(needle); at !== -1 && n < cap; at = text.indexOf(needle, at + needle.length)) n += 1;
-    return n;
-  }
-
-  // ---- Data -------------------------------------------------------------------
-
+  // Data
   const ruleDocs = DATA.ruleDocs || [];
   const ruleDocLabel = new Map(ruleDocs.map((d) => [d.id, d.label]));
   const DEFAULTS = { pages: [], body: "", summary: "", summaryText: "", bodyText: "", abstract: "", url: "", file: "", binding: "", dateNote: "", note: "", category: "", publisher: "", date: "" };
@@ -184,6 +154,7 @@
     const rule = item.kind === "rule";
     item.f = {
       title: fold(item.title),
+      label: fold(rule ? ruleLabel(item) : item.title),
       meta: fold((rule
         ? [item.status, item.goal, item.field, item.section, ruleDocLabel.get(item.ruleDoc), ...sourceTitles(item)]
         : [item.publisher, item.category]).filter(Boolean).join(" ")),
@@ -204,44 +175,7 @@
   }
   const KIND_ORDER = Object.keys(KINDS).filter((k) => items.some((i) => i.kind === k));
 
-  // Weighted hits of one needle: title before metadata before summary
-  // before text; the cited pages of a rule's sources count least.
-  function weight(item, needle) {
-    return (
-      count(item.f.title, needle, 5) * 20 +
-      count(item.f.meta, needle, 5) * 6 +
-      count(item.f.summary, needle, 10) * 3 +
-      count(item.f.body, needle, 30) +
-      item.f.pages.reduce((sum, page) => sum + count(page, needle, 10), 0) +
-      Math.min(3, item.f.cited.reduce((sum, page) => sum + count(page, needle, 3), 0)) * 0.25
-    );
-  }
-  const best = (item, list) => Math.max(...list.map((v) => weight(item, v)));
-
-  /** Score of an item, 0 if a word is missing. A phrase hit counts most. */
-  function score(item, query) {
-    if (query.empty) return 1;
-    let total = 0;
-    for (const list of query.words) {
-      const s = best(item, list);
-      if (s === 0) return 0;
-      total += s;
-    }
-    if (query.phrase) total += 50 * best(item, query.phrase);
-    return total;
-  }
-
-  /** Needles to mark: the phrase where it occurs, else the words. */
-  function needles(item, query) {
-    if (query.empty) return [];
-    if (query.phrase && best(item, query.phrase) > 0) return query.phrase;
-    const words = query.words.flat();
-    const long = words.filter((n) => n.length > 2);
-    return long.length ? long : words;
-  }
-
-  // ---- Facets -------------------------------------------------------------------
-
+  // Facets
   // Each facet describes some kinds: a status filter narrows the rules and
   // does not test the sources. While no kind is chosen, an active facet also
   // limits the board to the kinds it describes (see shownKinds), so the
@@ -285,8 +219,7 @@
     return true;
   }
 
-  // ---- State, hash and history -----------------------------------------------
-
+  // State, hash and history
   // Short keys as in the published page; the long keys of the former local
   // dashboard are still read, so old links keep working.
   function parseHash(hash) {
@@ -296,7 +229,7 @@
       const raw = p.get(facet.short) || p.get(facet.key);
       s[facet.key] = raw ? raw.split("|") : [];
     }
-    for (const key of ["sel", "doc", "page", "at", "pr"]) s[key] = p.get(key) || "";
+    for (const key of ["sel", "doc", "page", "at", "pr", "wt"]) s[key] = p.get(key) || "";
     s.v = WORK && p.get("v") === "arbeit" ? "arbeit" : "";
     return s;
   }
@@ -306,7 +239,7 @@
     if (s.v) p.set("v", s.v);
     if (s.q) p.set("q", s.q);
     for (const facet of FACETS) if (s[facet.key].length) p.set(facet.short, s[facet.key].join("|"));
-    for (const key of ["sel", "doc", "page", "at", "pr"]) if (s[key]) p.set(key, s[key]);
+    for (const key of ["sel", "doc", "page", "at", "pr", "wt"]) if (s[key]) p.set(key, s[key]);
     return "#" + p.toString();
   }
 
@@ -337,15 +270,14 @@
   function follow(href) {
     const t = parseHash(href);
     const mark = t.sel && !state.sel && !t.doc ? { panel: true } : {};
-    go({ v: t.v, pr: t.pr, sel: t.sel, doc: t.doc, page: t.page, at: t.at }, { push: true, mark });
+    go({ v: t.v, pr: t.pr, wt: t.wt, sel: t.sel, doc: t.doc, page: t.page, at: t.at }, { push: true, mark });
   }
 
   // Rules and documents open in the Wissen view, projects in the Arbeitsbereich.
-  const CLEAR = { v: "", pr: "", sel: "", doc: "", page: "", at: "" };
+  const CLEAR = { v: "", pr: "", wt: "", sel: "", doc: "", page: "", at: "" };
   const hrefSel = (id) => hashFor({ ...state, ...CLEAR, sel: id });
   const hrefDoc = (id, page = "", at = "") => hashFor({ ...state, ...CLEAR, doc: id, page: String(page), at });
   const hrefView = (v) => hashFor({ ...state, ...CLEAR, v });
-  const hrefProject = (id) => hashFor({ ...state, ...CLEAR, v: "arbeit", pr: id });
 
   function closePanel() {
     if (history.state && history.state.panel) history.back();
@@ -357,8 +289,7 @@
     else go({ doc: "", page: "", at: "" });
   }
 
-  // ---- Highlighting ------------------------------------------------------------
-
+  // Highlighting
   function highlight(root, list) {
     if (!list.length) return [];
     const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
@@ -390,28 +321,81 @@
     return found;
   }
 
-  // ---- Controls ----------------------------------------------------------------
-
-  function chip(facet, value) {
-    const b = el("button", { type: "button", class: "chip", "data-facet": facet.key, "data-value": value, "aria-pressed": "false" },
-      facet.label(value), el("span", { class: "n" }));
-    b.addEventListener("click", () => {
-      // A chip without matches stays focusable for orientation but does nothing.
-      if (b.getAttribute("aria-disabled") === "true") return;
-      const list = state[facet.key];
-      go({ [facet.key]: list.includes(value) ? list.filter((v) => v !== value) : [...list, value] });
+  // Controls
+  function chip(facet,value) {
+    const input=el("input",{type:"checkbox","data-facet":facet.key,"data-value":value});
+    input.addEventListener("change",()=>{
+      const list=state[facet.key];
+      go({[facet.key]:input.checked ? [...list,value] : list.filter(v=>v!==value)});
     });
-    return b;
+    return el("label",{class:"filter-option"},input,el("span",{},facet.label(value)));
+  }
+
+  let suggestions = [], activeSuggestion = -1, suggestionsDismissed = false;
+  function closeSuggestions() {
+    suggestionsDismissed = true;
+    activeSuggestion = -1;
+    $("suggestions").hidden = true;
+    $("q").setAttribute("aria-expanded","false");
+    $("q").removeAttribute("aria-activedescendant");
+  }
+  function activateSuggestion(index) {
+    activeSuggestion = index;
+    const options = $("suggestions").querySelectorAll('[role="option"]');
+    options.forEach((option,i)=>option.setAttribute("aria-selected",String(i===index)));
+    if(index>=0) {
+      $("q").setAttribute("aria-activedescendant",options[index].id);
+      options[index].scrollIntoView({block:"nearest"});
+    } else $("q").removeAttribute("aria-activedescendant");
+  }
+  function openSuggestion(index) {
+    const item=suggestions[index];
+    if(!item) return;
+    closeSuggestions();
+    follow(item.kind === "rule" || item.kind === "source" ? hrefSel(item.id) : hrefDoc(item.id));
+  }
+  function suggest() {
+    const q=$("q"), query=parseQuery(q.value);
+    if(query.empty || suggestionsDismissed || document.activeElement!==q || reading()) {closeSuggestions();return;}
+    suggestions=suggestionsFor(items.filter(item=>shownKinds().includes(item.kind)&&passes(item)),query);
+    const list=$("suggestions");
+    list.replaceChildren(...suggestions.map((item,i)=>{
+      const title=item.kind==="rule" ? ruleLabel(item) : item.title;
+      const option=el("li",{role:"option",id:`suggestion-${i}`,"aria-selected":"false"},
+        el("span",{},title),el("small",{},item.kind==="rule" ? item.status : KINDS[item.kind].one));
+      // Keep input focus so the listbox is controlled by its combobox.
+      option.addEventListener("pointerdown",event=>event.preventDefault());
+      option.addEventListener("click",()=>openSuggestion(i));
+      return option;
+    }));
+    activeSuggestion=-1;
+    list.hidden=!suggestions.length;
+    q.setAttribute("aria-expanded",String(suggestions.length>0));
+    q.removeAttribute("aria-activedescendant");
   }
 
   function buildControls() {
-    for (const facet of FACETS) $(facet.box).append(...facet.values.map((v) => chip(facet, v)));
+    for(const facet of FACETS) {
+      const box=$(facet.box), label=box.querySelector("p");
+      const options=el("div",{class:"filter-options"},...facet.values.map(v=>chip(facet,v)));
+      if(facet.key==="kind") box.replaceChildren(label,options);
+      else box.replaceChildren(el("details",{class:"facet",open:["field","status"].includes(facet.key)},
+        el("summary",{},el("span",{id:label.id},label.textContent),el("span",{class:"facet-value"})),options));
+    }
     // The second sentence matters only while a text is open.
-    $("q-hint").append(el("span", { class: "on-board" }, "Alle Wörter müssen vorkommen, eine Phrase in Anführungszeichen."));
+    $("q").placeholder="Regel oder Quelle";
     if (HAS_READER) $("q-hint").append(el("span", { class: "on-reader" }, "Enter springt zur nächsten Fundstelle, Umschalt+Enter zur vorigen."));
     const q = $("q");
-    q.addEventListener("input", () => go({ q: q.value }));
+    q.addEventListener("input",()=>{suggestionsDismissed=false;go({q:q.value});suggest();});
+    q.addEventListener("focus",()=>{suggestionsDismissed=false;suggest();});
+    q.addEventListener("blur",closeSuggestions);
     q.addEventListener("keydown", (event) => {
+      if(!$("suggestions").hidden) {
+        if(event.key==="ArrowDown" || event.key==="ArrowUp") {event.preventDefault();activateSuggestion(nextSuggestion(activeSuggestion,event.key==="ArrowDown"?1:-1,suggestions.length));return;}
+        if(event.key==="Enter" && activeSuggestion>=0) {event.preventDefault();openSuggestion(activeSuggestion);return;}
+        if(event.key==="Escape") {event.preventDefault();closeSuggestions();return;}
+        if(event.key==="Enter") closeSuggestions();
+      }
       if (event.key === "Enter" && reading()) {
         event.preventDefault();
         stepMark(event.shiftKey ? -1 : 1);
@@ -432,11 +416,6 @@
       $("views").hidden = false;
       for (const node of document.querySelectorAll("[data-work]")) node.hidden = false;
     }
-    const links = DATA.links || [];
-    if (links.length) {
-      $("links").append(...links.map((l) => el("a", { href: l.href }, l.label)));
-      $("links").hidden = false;
-    }
     // On a phone the filters fold away, so the cards come first.
     if (window.matchMedia("(max-width: 48rem)").matches && !filtered()) $("filters").open = false;
   }
@@ -454,23 +433,22 @@
         counts[facet.key].set(v, (counts[facet.key].get(v) || 0) + 1);
       }
     }
-    for (const b of document.querySelectorAll(".chip")) {
-      const { facet, value } = b.dataset;
-      const n = counts[facet].get(value) || 0;
-      const pressed = state[facet].includes(value);
-      b.setAttribute("aria-pressed", String(pressed));
-      if (n === 0 && !pressed) b.setAttribute("aria-disabled", "true");
-      else b.removeAttribute("aria-disabled");
-      b.querySelector(".n").textContent = String(n);
-      b.classList.toggle("none", n === 0);
+    for(const input of document.querySelectorAll(".filter-option input")) {
+      const {facet,value}=input.dataset;
+      input.checked=state[facet].includes(value);
+      input.disabled=!input.checked && !(counts[facet].get(value)||0);
+    }
+    for(const facet of FACETS) {
+      const box=$(facet.box), value=box.querySelector(".facet-value");
+      if(value) value.textContent=state[facet.key].map(facet.label).join(", ");
+      box.hidden=Boolean(facet.kinds)&&!state[facet.key].length&&!facet.kinds.some(k=>shownKinds().includes(k));
     }
     const active = activeFacets();
     $("filter-count").textContent = active ? `${active} aktiv` : "";
     $("reset").hidden = !filtered();
   }
 
-  // ---- Cards -------------------------------------------------------------------
-
+  // Cards
   const selected = () => {
     const item = byId.get(state.sel);
     return item && (item.kind === "rule" || item.kind === "source") ? item : null;
@@ -533,11 +511,8 @@
     const list = needles(item, query);
     const note = linkNote(item);
     const isSel = item.id === state.sel;
-    // Long rule texts are cut to a few lines while nobody searches; the
-    // panel holds the full wording, the link name keeps it for screen readers.
-    const clamp = item.kind === "rule" && query.empty && !isSel;
     const box = el("article", {
-      class: `card card-${item.kind}${isSel ? " selected" : ""}${note ? " linked" : ""}${clamp ? " clamped" : ""}`,
+      class: `card card-${item.kind}${isSel ? " selected" : ""}${note ? " linked" : ""}`,
       "data-id": item.id,
     });
     if (note) box.append(el("p", { class: "link-note" }, note));
@@ -551,23 +526,8 @@
     }, item.title);
     highlight(link, list);
     const meta = el("p", { class: "meta" });
-    if (item.kind === "rule") {
-      box.append(el("p", { class: "text" }, link));
-      meta.append(el("span", { class: "strong" }, item.status));
-      if (item.goal) meta.append(el("span", {}, item.goal));
-      for (const { scope, count } of RULE_SCOPES) {
-        const uses = (usedIn.get(item.id) || []).filter((u) => u.scope === scope).length;
-        if (uses) meta.append(el("span", {}, `${count} ${uses} ${uses === 1 ? "Projekt" : "Projekten"}`));
-      }
-      // A hit only on a cited page shows nowhere on the card; say where it is.
-      if (list.length && !list.some((n) => item.f.title.includes(n) || item.f.meta.includes(n))) {
-        meta.append(el("span", {}, "Treffer in einer zitierten Quelle"));
-      }
-      box.append(meta, el("p", { class: "basis" }, [...new Set(item.sources.map((s) => s.label))].join(", ")));
-      return box;
-    }
     box.append(el("p", { class: "title" }, link));
-    if (item.abstract) {
+    if (item.abstract && !query.empty) {
       const abstract = el("p", { class: "abstract" }, item.abstract);
       highlight(abstract, list);
       box.append(abstract);
@@ -595,7 +555,33 @@
     return box;
   }
 
-  const grid = (list, query) => el("div", { class: "grid" }, ...list.map((i) => card(i, query)));
+  function sourceLinks(rule) {
+    const box=el("span",{class:"rule-basis"});
+    rule.sources.forEach((source,index)=>{if(index)box.append(", ");box.append(el("a",{href:hrefSel(source.id)},source.label));});
+    return box;
+  }
+  function ruleTable(list,query,applications=null) {
+    const header=el("tr",{},...["Regel","Status","Ziel","Quellen"].map(label=>el("th",{scope:"col"},label)));
+    const body=el("tbody",{},...list.map(rule=>{
+      const note=linkNote(rule);
+      const link=el("a",{class:"card-link",href:hrefSel(rule.id),"data-id":rule.id,
+        "data-rule":applications?rule.id:undefined,"aria-current":state.sel===rule.id?"true":undefined},ruleLabel(rule));
+      highlight(link,needles(rule,query));
+      const cell=el("td",{class:"rule-name"},link);
+      if(!query.empty) {const hit=firstIn(fold(rule.text),needles(rule,query));const text=el("p",{class:"search-excerpt"},excerpt(rule.text,hit?.at||0,hit?.length||40));highlight(text,needles(rule,query));cell.append(text);}
+      if(note)cell.append(el("span",{class:"link-note"},note));
+      if(applications) {
+        const why=applications.find(a=>a.id===rule.id);
+        if(why)cell.append(el("details",{class:"application"},el("summary",{},"Projektbezug"),fromHtml("p",{},why.why)));
+      }
+      return el("tr",{class:`card card-rule${state.sel===rule.id?" selected":""}${note?" linked":""}`,"data-id":rule.id},cell,
+        el("td",{class:"rule-status"},el("span",{title:STATUS[rule.status]},rule.status)),
+        el("td",{class:"rule-goal"},rule.goal),el("td",{class:"rule-sources"},sourceLinks(rule)));
+    }));
+    return el("table",{class:"rule-table"},el("thead",{},header),body);
+  }
+  const grid=(list,query)=>list[0]?.kind==="rule" ? ruleTable(list,query) : el("div",{class:"grid source-list"},...list.map(i=>card(i,query)));
+
 
   function defaultOrder(a, b) {
     if (a.kind === "knowledge") return (a.role === "work" ? 0 : 1) - (b.role === "work" ? 0 : 1) || a.title.localeCompare(b.title, "de");
@@ -628,13 +614,6 @@
     });
   }
 
-  const EMPTY = {
-    rule: "Keine Regel passt zu Suche und Filtern.",
-    source: "Keine Quelle passt zu Suche und Filtern.",
-    knowledge: "Kein Wissensdokument passt zur Suche.",
-    note: "Keine Notiz passt zur Suche.",
-  };
-
   let liveTimer = 0;
   function renderBoard(scores, query) {
     const sections = [];
@@ -646,24 +625,23 @@
       const shown = all.filter((i) => scores.get(i) > 0 && passes(i))
         .sort((a, b) => (query.empty ? 0 : scores.get(b) - scores.get(a)) || defaultOrder(a, b));
       said.push(`${shown.length} ${KINDS[kind].many}`);
-      const body = !shown.length
-        ? [el("p", { class: "empty" }, EMPTY[kind] + (query.empty ? "" : " Viele Texte sind englisch, ein englischer Begriff findet dort mehr."))]
-        : kind === "rule" ? ruleGroups(shown, query)
+      if (!shown.length) continue;
+      const body = kind === "rule" ? ruleGroups(shown, query)
           : kind === "source" ? sourceGroups(shown, query)
             : [grid(shown, query)];
       sections.push(el("section", { class: "group", "aria-labelledby": `head-${kind}` },
         el("h2", { id: `head-${kind}` }, KINDS[kind].many,
-          el("span", { class: "n" }, shown.length === all.length ? String(all.length) : `${shown.length} von ${all.length}`)),
+          filtered()?el("span",{class:"n"},`${shown.length} Treffer`):null),
         ...body));
     }
+    if (!sections.length) sections.push(el("p", { class: "empty" }, "Keine Treffer. Ändere die Suche oder setze die Filter zurück."));
     $("board").replaceChildren(...sections);
     // Screen readers hear the result once typing pauses, not per keystroke.
     clearTimeout(liveTimer);
     liveTimer = setTimeout(() => { $("status").textContent = said.join(", "); }, 500);
   }
 
-  // ---- Panel -------------------------------------------------------------------
-
+  // Panel
   function host(url) {
     try {
       return new URL(url).host.replace(/^www\./, "");
@@ -730,7 +708,7 @@
       if (!uses.length) return [];
       return [el("h3", {}, title),
         el("ul", { class: "items" }, ...uses.map((u) => el("li", {},
-          el("a", { href: hrefProject(u.project.id), "data-project": u.project.id }, u.project.title),
+          el("a", { href: workLink(u.project.id, "rules"), "data-project": u.project.id }, u.project.title),
           fromHtml("span", { class: "meta" }, u.why))))];
     });
   }
@@ -749,9 +727,10 @@
       const inDoc = readable(byId.get(item.ruleDoc))
         ? el("p", { class: "actions" }, el("a", { href: hrefDoc(item.ruleDoc, "", item.at), "data-open": item.ruleDoc }, "Im Regeldokument lesen"))
         : null;
-      head.prepend(el("p", { class: "kind" }, ["Regel", ruleDocLabel.get(item.ruleDoc), item.field].filter(Boolean).join(", ")));
+
       return [head,
-        el("h2", { id: "panel-title", tabindex: "-1" }, item.text),
+        el("h2",{id:"panel-title",tabindex:"-1"},ruleLabel(item)),
+        el("p",{class:"rule-wording",lang:"en"},item.text),
         facts([["Status", item.status, STATUS[item.status]], ["Ziel", item.goal, GOALS[item.goal]]]),
         inDoc,
         el("h3", {}, "Grundlagen"), basisList,
@@ -762,7 +741,7 @@
     const actions = el("p", { class: "actions" },
       readable(item) ? el("a", { href: hrefDoc(item.id), "data-open": item.id }, "Volltext lesen") : null,
       item.url ? el("a", { href: item.url, target: "_blank", rel: "noopener" }, `Original bei ${host(item.url)}`) : null);
-    head.prepend(el("p", { class: "kind" }, `Quelle, ${item.category}`));
+
     // The binding note of a summary starts with a status word; the panel shows
     // the word with its German meaning, the full note stays in the reader.
     const bindingWord = Object.keys(STATUS).find((w) => item.binding.startsWith(w));
@@ -791,8 +770,8 @@
     $("workspace").classList.toggle("selecting", open);
     panel.hidden = !open;
     // Where the panel covers the page, the content behind it is out of reach.
-    const covering = open && window.matchMedia("(max-width: 72rem)").matches;
-    for (const node of document.querySelectorAll(".controls, .main, .foot, .top")) node.inert = covering;
+    const covering = open && window.matchMedia("(max-width: 85rem)").matches;
+    for (const node of document.querySelectorAll(".controls, .main, .site-footer, .site-header")) node.inert = covering;
     if (!item) {
       shownPanel = "";
       return;
@@ -802,10 +781,12 @@
       panel.scrollTop = 0;
       shownPanel = item.id;
     }
+    if (covering && !panel.contains(document.activeElement)) {
+      $("panel-title").focus({ preventScroll: true });
+    }
   }
 
-  // ---- Reader --------------------------------------------------------------------
-
+  // Reader
   let readerKey = "";
   let navKey = "";
   let marks = [];
@@ -963,21 +944,12 @@
     pageFrame = requestAnimationFrame(updatePage);
   }
 
-  // ---- Arbeitsbereich -------------------------------------------------------------
-
+  // Arbeitsbereich
   const number = new Intl.NumberFormat("de-DE", { maximumFractionDigits: 0 });
   const longDate = new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "long", year: "numeric" });
   const isoDay = (iso) => longDate.format(new Date(`${iso}T00:00:00`)); // local time, not UTC
 
   const htmlList = (list, cls) => el("ul", { class: cls }, ...list.map((h) => fromHtml("li", {}, h)));
-
-  function block(id, title, ...content) {
-    return el("section", { class: "work-block", "aria-labelledby": id }, el("h2", { id }, ...title), ...content);
-  }
-
-  function part(title, content) {
-    return content ? el("section", { class: "part" }, el("h4", {}, title), content) : null;
-  }
 
   // Bars of one series in one hue, the value as text beside each bar; the
   // longest bar is the largest value of the list.
@@ -1006,92 +978,60 @@
       el("p", { class: "actions" }, el("a", { href: d.page }, "Ganze Umsatzseite öffnen")));
   }
 
-  function ruleCard(applied) {
-    const rule = byId.get(applied.id);
-    if (!rule) return null;
-    return el("article", { class: "card card-rule clamped" },
-      el("p", { class: "text" }, el("a", { class: "card-link", href: hrefSel(rule.id), "data-rule": rule.id }, rule.text)),
-      el("p", { class: "meta" }, el("span", { class: "strong" }, rule.status), rule.goal ? el("span", {}, rule.goal) : null),
-      fromHtml("p", { class: "why" }, applied.why));
+  function workLink(project,section="") {
+    return hashFor({...state,...CLEAR,v:"arbeit",pr:project,wt:section});
   }
-
   function projectCard(p) {
-    const titleId = `pr-title-${p.id}`;
-    const facts = el("dl", { class: "facts" });
-    for (const [term, value] of [["Stand", p.state], ["Nächster Schritt", p.next]]) {
-      if (value) facts.append(el("dt", {}, term), fromHtml("dd", {}, value));
+    const section=["deliverables","rules","data","decisions"].includes(state.wt) && (state.wt !== "data" || p.data) ? state.wt : "";
+    const tabs=[["","Überblick"],["deliverables","Leistungen"],["rules","Regeln"],...(p.data?[["data","Umsatz"]]:[]),["decisions","Entscheidungen"]];
+    const nav=el("nav",{class:"project-nav","aria-label":"Projektansicht"},...tabs.map(([key,label])=>
+      el("a",{href:workLink(p.id,key),"aria-current":key===section?"page":undefined},label)));
+    const content=el("div",{class:"project-content"});
+    if(section==="deliverables")content.append(el("ul",{class:"deliv",role:"list"},...p.deliverables.map(d=>el("li",{},
+      fromHtml("p",{class:"name"},d.name),d.state?fromHtml("p",{class:"state"},d.state):null,d.refs?fromHtml("p",{class:"refs"},d.refs):null))));
+    else if(section==="rules") {
+      for(const [scope,label] of [["dhcraft","Für DHCraft"],["client","Für den Auftraggeber übertragbar"]]) {
+        const applied=p.rules.filter(r=>r.scope===scope), relevant=applied.map(r=>byId.get(r.id)).filter(Boolean);
+        if(relevant.length)content.append(el("section",{class:"rule-group"},el("h3",{},label),ruleTable(relevant,parseQuery(""),applied)));
+      }
+    } else if(section==="data")content.append(dataPanel(p.data));
+    else if(section==="decisions")content.append(htmlList(p.decisions,"work-list"));
+    else {
+      if(p.state)content.append(fromHtml("p",{class:"project-state"},p.state));
+      if(p.next)content.append(el("div",{class:"next-action"},el("span",{},"Nächster Schritt"),fromHtml("p",{},p.next)));
+      const group=(label,values)=>values.length?el("section",{},el("h3",{},label),htmlList(values,"work-list")):null;
+      content.append(el("div",{class:"overview-cols"},group("Fragen an den Auftraggeber",p.questions),group("Beim Inhaber zu klären",p.owner)));
+      const todo=WORK.todos.find(g=>g.project===p.id);
+      if(todo)content.append(el("details",{class:"project-todos"},el("summary",{},"Weitere nächste Schritte"),htmlList(todo.items,"work-list")));
     }
-    const deliverables = p.deliverables.length
-      ? el("ul", { class: "deliv" }, ...p.deliverables.map((d) => el("li", {},
-        fromHtml("p", { class: "name" }, d.name),
-        d.state ? fromHtml("p", { class: "state" }, d.state) : null,
-        d.refs ? fromHtml("p", { class: "refs" }, d.refs) : null)))
-      : null;
-    const list = (items) => (items.length ? htmlList(items, "work-list") : null);
-    return el("article", { class: "project", id: `pr-${p.id}`, "aria-labelledby": titleId },
-      el("p", { class: "kind" }, ["Kundenprojekt", p.status].filter(Boolean).join(", ")),
-      fromHtml("h3", { id: titleId, tabindex: "-1" }, p.link),
-      facts.children.length ? facts : null,
-      el("div", { class: "project-cols" },
-        ...[part("Leistungen und Stand", deliverables),
-          p.data ? dataPanel(p.data) : null,
-          part("Offene Fragen an den Auftraggeber", list(p.questions)),
-          part("Offen beim Inhaber", list(p.owner)),
-          part("Entscheidungen", list(p.decisions))].filter(Boolean)),
-      p.rules.length
-        ? el("section", { class: "project-rules" },
-          el("h4", {}, "Geltende Regeln", el("span", { class: "n" }, String(p.rules.length))),
-          el("p", { class: "fine" }, "Eine Karte öffnet die Regel in der Wissensansicht."),
-          ...RULE_SCOPES.map(({ scope, group, fine }) => {
-            const own = p.rules.filter((r) => r.scope === scope);
-            return own.length
-              ? el("div", { class: "rule-group" },
-                el("h5", {}, group, el("span", { class: "n" }, String(own.length))),
-                el("p", { class: "fine" }, fine),
-                el("div", { class: "grid" }, ...own.map(ruleCard).filter(Boolean)))
-              : null;
-          }).filter(Boolean))
-        : null);
+    return el("article",{class:"project",id:`pr-${p.id}`,"aria-labelledby":`pr-title-${p.id}`},
+      fromHtml("h2",{id:`pr-title-${p.id}`,tabindex:"-1"},p.link),nav,content);
   }
-
   function buildWork() {
-    const steps = WORK.todos.reduce((n, g) => n + g.items.length, 0);
-    const todos = block("h-todos", ["Nächste Schritte", el("span", { class: "n" }, String(steps))],
-      ...WORK.todos.filter((g) => g.items.length).map((g) => el("div", { class: "todo-group" },
-        el("h3", {}, g.project ? el("a", { href: hrefProject(g.project), "data-project": g.project }, g.from) : g.from),
-        el("p", { class: "origin" }, g.project ? "aus dem " : "aus ", fromHtml("span", {}, g.where)),
-        htmlList(g.items, "work-list todo"))));
-    const side = el("div", { class: "work-side" },
-      WORK.running.length ? block("h-running", ["Was läuft"], htmlList(WORK.running, "work-list")) : null,
-      WORK.questions.length ? block("h-questions", ["Offene Fragen"], htmlList(WORK.questions, "work-list")) : null);
-    const projectList = projects.length
-      ? el("section", { class: "work-projects", "aria-labelledby": "h-projects" },
-        el("h2", { id: "h-projects" }, "Projekte", el("span", { class: "n" }, String(projects.length))),
-        ...projects.map(projectCard))
-      : null;
-    $("work").replaceChildren(
-      // The file is named as text here; each to-do group links its origin.
-      el("p", { class: "work-lead" }, "Laufende Arbeit, nächste Schritte und Kundenprojekte, zusammengestellt aus ",
-        // nowrap keeps the file name from breaking at its hyphen on phones.
-        el("span", { class: "nowrap" }, "ACTIVE-WORK.md"), " und den Projektdokumenten. Die Ansicht zeigt nur an, geändert wird in den Dokumenten selbst."),
-      el("div", { class: "work-top" }, todos, side),
-      projectList);
-  }
-
-  let workBuilt = false;
-  function renderWork(prev, restore) {
-    if (!workBuilt) {
-      buildWork();
-      workBuilt = true;
+    const current=projects.find(p=>p.id===state.pr)||projects[0],general=state.pr==="general"||!current;
+    const nav=el("nav",{class:"work-nav","aria-label":"Arbeitsbereich"},
+      ...projects.map(p=>el("a",{href:workLink(p.id),"data-project":p.id,"aria-current":!general&&p===current?"page":undefined},projects.length===1?"Projekt":p.title)),
+      el("a",{href:workLink("general"),"aria-current":general?"page":undefined},"Allgemeine Arbeit"));
+    const content=general?el("section",{class:"general-work"},el("h2",{},"Allgemeine Arbeit"),
+      ...WORK.todos.filter(g=>!g.project&&g.items.length).map(g=>el("div",{},htmlList(g.items,"work-list"),fromHtml("p",{class:"origin"},g.where))),
+      WORK.running.length?el("details",{class:"work-history"},el("summary",{},"Arbeitsstand und Verlauf"),htmlList(WORK.running,"work-list")):null,
+      WORK.questions.length?el("details",{class:"work-history"},el("summary",{},"Offene Fragen"),htmlList(WORK.questions,"work-list")):null):projectCard(current);
+    const focusedHref = document.activeElement?.closest("#work a")?.getAttribute("href");
+    $("work").replaceChildren(nav,content);
+    if (focusedHref) {
+      const active = [...$("work").querySelectorAll("a")].find(a=>a.getAttribute("href")===focusedHref);
+      active?.focus({preventScroll:true});
     }
+  }
+  function renderWork(prev, restore) {
+    buildWork();
     for (const old of $("work").querySelectorAll(".project.target")) old.classList.remove("target");
     const target = state.pr ? document.getElementById(`pr-${state.pr}`) : null;
     if (target) target.classList.add("target");
     if (restore) return;
     // Entering the view or another project: the project, else the top.
-    if (!prev || prev.v !== state.v || prev.pr !== state.pr) {
-      if (target) target.scrollIntoView({ block: "start" });
-      else window.scrollTo(0, 0);
+    if (!prev || prev.v !== state.v || prev.pr !== state.pr || prev.wt !== state.wt) {
+      window.scrollTo(0, 0);
     }
   }
 
@@ -1101,6 +1041,11 @@
   function workFocus(prev, restore) {
     const quiet = { preventScroll: true };
     const work = $("work");
+    if (restore && prev.v === "arbeit" && (prev.wt !== state.wt || prev.pr !== state.pr)) {
+      const active = work.querySelector('.project-nav a[aria-current="page"]') || work.querySelector('.work-nav a[aria-current="page"]');
+      active?.focus(quiet);
+      return;
+    }
     if (restore && prev.v !== "arbeit") {
       const back = (prev.sel && work.querySelector(`a[data-rule="${CSS.escape(prev.sel)}"]`)) ||
         (prev.doc && work.querySelector(`a[data-open="${CSS.escape(prev.doc)}"]`));
@@ -1113,7 +1058,9 @@
       // Coming from a rule's panel, the reader lands on that rule in the project.
       const card = prev.sel && document.querySelector(`#pr-${CSS.escape(state.pr)} a[data-rule="${CSS.escape(prev.sel)}"]`);
       if (card) {
-        // Scrolling the link itself would scroll the clamped text inside the card.
+        // Show the specific application when returning from its rule detail.
+        const disclosure=card.closest(".card").querySelector(".application");
+        if(disclosure)disclosure.open=true;
         card.closest(".card").scrollIntoView({ block: "center" });
         card.focus(quiet);
         return;
@@ -1123,6 +1070,11 @@
         title.focus(quiet);
         return;
       }
+    }
+    if (state.pr === "general" && prev.pr !== state.pr) {
+      $("work").querySelector("h2").setAttribute("tabindex", "-1");
+      $("work").querySelector("h2").focus(quiet);
+      return;
     }
     const inSwitch = document.activeElement && document.activeElement.closest("#views");
     if (prev.v !== state.v && !inSwitch) $("main").focus(quiet);
@@ -1138,8 +1090,7 @@
     }
   }
 
-  // ---- Render --------------------------------------------------------------------
-
+  // Render
   function cardLink(id) {
     return id ? document.querySelector(`.card-link[data-id="${CSS.escape(id)}"]`) : null;
   }
@@ -1238,8 +1189,7 @@
     }
   }
 
-  // ---- Events --------------------------------------------------------------------
-
+  // Events
   document.addEventListener("click", (event) => {
     // The skip link moves focus only; as a hash it would replace the state.
     const skip = event.target.closest("a.skip");
@@ -1282,6 +1232,7 @@
   });
 
   document.addEventListener("scroll", trackPage, { passive: true });
+  window.matchMedia("(max-width: 85rem)").addEventListener("change", () => renderPanel(selected(), readable(byId.get(state.doc)) ? byId.get(state.doc) : null));
 
   history.replaceState({ ...history.state, depth: depth() }, "", hashFor(state));
   buildControls();

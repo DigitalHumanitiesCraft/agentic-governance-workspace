@@ -7,31 +7,24 @@
   <meta name="description" content="Regeln für AI Agents in einer kleinen Forschungs- und Softwarefirma, jede mit ihren Quellen. Eine Arbeitsfläche von Digital Humanities Craft.">
   <link rel="icon" href="assets/dhcraft_logo_watercolor.png">
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="chrome.css">
 </head>
 <body>
   <a class="skip" href="#main">Zum Inhalt springen</a>
 
-  <header class="top">
-    <a class="brand" href="https://dhcraft.org" rel="noopener">
-      <img src="assets/dhcraft_logo_watercolor.png" alt="" width="24" height="28">
-      <span>Digital Humanities Craft</span>
-    </a>
-    <div class="title">
-      <h1>Agentic Engineering und Governance</h1>
-      <p>Welche Regeln braucht eine kleine Forschungs- und Softwarefirma, damit AI Agents regelkonform, sicher und nachprüfbar arbeiten? Jede Regel steht hier mit den Quellen, auf denen sie beruht.</p>
-    </div>
-    <nav class="links" id="links" aria-label="Weitere Seiten" hidden></nav>
-    <nav class="views" id="views" aria-label="Ansicht" hidden>
-      <a id="view-wissen" href="#">Wissen</a>
-      <a id="view-arbeit" href="#v=arbeit">Arbeitsbereich</a>
-    </nav>
+  <header class="site-header">
+    <a class="site-brand" href="https://dhcraft.org" rel="noopener"><img src="assets/dhcraft_logo_watercolor.png" alt="" width="28" height="32"><span>Digital Humanities Craft</span></a>
+    <a class="site-title" href="./"><h1>Agentic Engineering und Governance</h1></a>
+    <nav class="site-nav" id="views" aria-label="Hauptnavigation"><a id="view-wissen" href="#">Wissen</a><a id="view-arbeit" href="#v=arbeit">Arbeitsbereich</a><a href="northwind/">Umsatz</a><a href="ueber.html">Über diese Seite</a></nav>
   </header>
 
   <div class="workspace" id="workspace">
     <aside class="controls" aria-label="Suche und Filter">
       <form class="search" role="search" id="search-form">
-        <label for="q">Suche</label>
-        <input type="search" id="q" autocomplete="off" spellcheck="false" aria-describedby="q-hint">
+        <label for="q" class="visually-hidden">Suche</label>
+        <details class="search-help"><summary aria-label="Suchhilfe">?</summary><p>Mehrere Wörter müssen gemeinsam vorkommen. Anführungszeichen suchen eine exakte Phrase. Deutsche Regelbezeichnungen und englische Originaltexte werden durchsucht.</p></details>
+        <input type="search" id="q" autocomplete="off" spellcheck="false" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="suggestions">
+        <ul id="suggestions" class="suggestions" role="listbox" aria-label="Suchvorschläge" hidden></ul>
         <p class="hint" id="q-hint"></p>
       </form>
 
@@ -39,21 +32,18 @@
         <summary>Filter<span class="n" id="filter-count"></span></summary>
         <div class="filter" id="f-kind" role="group" aria-labelledby="l-kind"><p id="l-kind">Zeigen</p></div>
         <div class="filter" id="f-set" role="group" aria-labelledby="l-set"><p id="l-set">Regelwerk</p></div>
-        <div class="filter" id="f-field" role="group" aria-labelledby="l-field"><p id="l-field">Feld der Leitlinien</p></div>
-        <div class="filter" id="f-status" role="group" aria-labelledby="l-status"><p id="l-status">Status der Regel</p></div>
-        <div class="filter" id="f-goal" role="group" aria-labelledby="l-goal"><p id="l-goal">Ziel der Regel</p></div>
-        <div class="filter" id="f-cat" role="group" aria-labelledby="l-cat"><p id="l-cat">Art der Quelle</p></div>
-        <div class="filter" id="f-year" role="group" aria-labelledby="l-year"><p id="l-year">Jahr der Quelle</p></div>
+        <div class="filter" id="f-field" role="group" aria-labelledby="l-field"><p id="l-field">Bereich</p></div>
+        <div class="filter" id="f-status" role="group" aria-labelledby="l-status"><p id="l-status">Status</p></div>
+        <div class="filter" id="f-goal" role="group" aria-labelledby="l-goal"><p id="l-goal">Ziel</p></div>
+        <div class="filter" id="f-cat" role="group" aria-labelledby="l-cat"><p id="l-cat">Kategorie</p></div>
+        <div class="filter" id="f-year" role="group" aria-labelledby="l-year"><p id="l-year">Jahr</p></div>
         <button type="button" class="text-button reset" id="reset" hidden>Alle Filter zurücksetzen</button>
       </details>
 
       <details class="about" id="about">
-        <summary>Was zeigt diese Arbeitsfläche?</summary>
-        <p>Sie zeigt die Leitlinien, die Digital Humanities Craft für den Einsatz von AI Agents aus Quellen des Jahres 2026 abgeleitet hat, ergänzt um wenige ältere Rechtstexte. Jede Regel nennt ihren Status, ihr Ziel und die Quellen mit Seite. Wer eine Karte wählt, sieht die verbundenen Karten hervorgehoben.</p>
-        <p data-scope="public" hidden>Die Quellen erscheinen mit einer eigenen Zusammenfassung und einem Link zum Original beim Herausgeber. Die Originale selbst liegen nicht auf dieser Seite.</p>
-        <p data-scope="internal" hidden>Diese lokale Fassung enthält zusätzlich den Governance-Entwurf, die Wissensdokumente, Notizen, Protokolle und den Volltext jeder Quelle. Sie ist nicht zur Veröffentlichung bestimmt.</p>
-        <p data-work hidden>Der Arbeitsbereich daneben zeigt den laufenden Stand von Digital Humanities Craft, die nächsten Schritte und die Kundenprojekte mit den Regeln, die in ihnen greifen.</p>
-        <p>Die Seite lädt keine externen Dienste nach, setzt keine Cookies und speichert nichts. Suche und Filter laufen im Browser.</p>
+        <summary>Begriffe und Hilfe</summary>
+        <p>Regeln zeigen ihre Quellen. Die Detailansicht enthält den vollständigen Wortlaut, die Fundstellen und den Bezug zu Projekten.</p>
+        <p>Die Suche durchsucht Regeltexte, Quellentitel und Zusammenfassungen. Originalvolltexte sind in dieser öffentlichen Fassung nicht enthalten.</p>
         <dl class="glossary" id="glossary"></dl>
       </details>
     </aside>
@@ -68,12 +58,13 @@
     <aside class="panel" id="panel" aria-labelledby="panel-title" hidden></aside>
   </div>
 
-  <footer class="foot">
-    <p data-scope="public" hidden>Inhalte von Digital Humanities Craft unter <a href="https://creativecommons.org/licenses/by/4.0/deed.de" rel="noopener">CC BY 4.0</a>, Code unter MIT. Die Quellen gehören ihren Herausgebern. Hier stehen nur ihre Metadaten, eigene Zusammenfassungen und Links. Stand <span class="stand"></span>.</p>
-    <p data-scope="internal" hidden>Lokale Arbeitsfassung mit Volltexten der Quellen, nicht zur Veröffentlichung. Stand <span class="stand"></span>.</p>
+  <footer class="site-footer">
+    <nav class="site-resources" aria-label="Materialien"><a href="material/DHCraft_Governance_AI_Agents_Beschlussvorlage_v1.0.pdf">Governance (PDF)</a><a href="material/DHCraft_Pitch_Regeln_fuer_AI_Agents.pptx">Pitch (PPTX)</a><a href="https://github.com/DigitalHumanitiesCraft/agentic-governance-vault">Vault</a><a href="https://github.com/DigitalHumanitiesCraft/agentic-governance-workspace">Code</a></nav>
+    <p>Digital Humanities Craft. Inhalte <a href="https://creativecommons.org/licenses/by/4.0/deed.de">CC BY 4.0</a>, Code <a href="LICENSE.md">MIT</a>. Quellen unter ihren eigenen Lizenzen.</p>
   </footer>
 
   <script src="data.js"></script>
+  <script src="search.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
